@@ -1,627 +1,596 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>CineGO</title>
-  <link rel="stylesheet" href="style.css" />
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>CineGO</title>
+    <link rel="stylesheet" href="style.css"/>
 </head>
 <body>
-  <header class="topbar">
+<header class="topbar">
     <div class="brand">
-  <img class="brand-logo-img" src="assets/logo.png" alt="CineGo" />
-</div>
+        <img class="brand-logo-img" src="assets/logo.png" alt="CineGo"/>
+    </div>
 
 
     <nav class="nav">
-      <button class="nav-ticket" id="buyTicketBtn">★ Mua Vé</button>
-      <button class="nav-btn" id="moviesBtn">Phim</button>
-      <button class="nav-btn" id="offersBtn">Ưu Đãi</button>
-      <button class="nav-btn" id="cinemaBtn">Rạp </button>
-      <button class="nav-btn" id="specialBtn">Rạp Đặc Biệt</button>
-      <button class="nav-btn hidden" id="contentAdminBtn">Quản lý nội dung</button>
-      <button class="nav-btn hidden" id="movieAdminBtn">Quản lý phim</button>
+        <button class="nav-ticket" id="buyTicketBtn">★ Mua Vé</button>
+        <button class="nav-btn" id="moviesBtn">Phim</button>
+        <button class="nav-btn" id="offersBtn">Ưu Đãi</button>
+        <button class="nav-btn" id="cinemaBtn">Rạp</button>
+        <button class="nav-btn" id="specialBtn">Rạp Đặc Biệt</button>
+        <button class="nav-btn hidden" id="contentAdminBtn">Quản lý nội dung</button>
+        <button class="nav-btn hidden" id="movieAdminBtn">Quản lý phim</button>
 
     </nav>
 
     <div class="account">
-    <button class="search-icon" id="focusSearchBtn">⌕</button>
-    <button class="user-circle" id="myTicketsBtn">🎟</button>
+        <button class="search-icon" id="focusSearchBtn">⌕</button>
+        <button class="user-circle" id="myTicketsBtn">🎟</button>
 
-    <div class="user-text">
-      <strong id="accountName">Khách</strong>
-      <span id="accountSub">0 Stars</span>
+        <div class="user-text">
+            <strong id="accountName">Khách</strong>
+            <span id="accountSub">0 Stars</span>
+        </div>
+
+        <button class="login-mini" id="loginOpenBtn">Đăng nhập</button>
+        <button class="login-mini hidden" id="logoutBtn">Đăng xuất</button>
     </div>
 
-    <button class="login-mini" id="loginOpenBtn">Đăng nhập</button>
-    <button class="login-mini hidden" id="logoutBtn">Đăng xuất</button>
-    </div>
+</header>
 
-  </header>
-
-  <main>
+<main>
     <section class="hero-wrap">
-  <button class="slider-arrow left" id="heroPrevBtn">‹</button>
+        <button class="slider-arrow left" id="heroPrevBtn">‹</button>
 
-  <div class="hero" id="heroBanner">
-    <div class="hero-content">
-      <span id="heroLabel">Phim nổi bật</span>
-      <h1 id="heroTitle">CineGo</h1>
-      <p id="heroDesc">Chọn phim hot và đặt vé nhanh chóng.</p>
-      <button id="heroDetailBtn" class="hero-detail-btn">Xem chi tiết</button>
-    </div>
-  </div>
+        <div class="hero" id="heroBanner">
+            <div class="hero-content">
+                <span id="heroLabel">Phim nổi bật</span>
+                <h1 id="heroTitle">CineGo</h1>
+                <p id="heroDesc">Chọn phim hot và đặt vé nhanh chóng.</p>
+                <button id="heroDetailBtn" class="hero-detail-btn">Xem chi tiết</button>
+            </div>
+        </div>
 
-  <button class="slider-arrow right" id="heroNextBtn">›</button>
+        <button class="slider-arrow right" id="heroNextBtn">›</button>
 
-  <div class="hero-dots" id="heroDots"></div>
-</section>
+        <div class="hero-dots" id="heroDots"></div>
+    </section>
 
     <section class="quick-booking">
-      <select id="quickMovie">
-        <option value="">Chọn phim</option>
-      </select>
+        <select id="quickMovie">
+            <option value="">Chọn phim</option>
+        </select>
 
-      <select id="quickCinema">
-        <option value=""> Chọn rạp</option>
-        <option>CineGO Hà Nội</option>
-        <option>CineGO Đà Nẵng</option>
-        <option>CineGO TP.HCM</option>
-      </select>
+        <select id="quickCinema">
+            <option value=""> Chọn rạp</option>
+            <option>CineGO Hà Nội</option>
+            <option>CineGO Đà Nẵng</option>
+            <option>CineGO TP.HCM</option>
+        </select>
 
-      <select id="quickDate">
-        <option value=""> Chọn ngày</option>
-      </select>
+        <select id="quickDate">
+            <option value=""> Chọn ngày</option>
+        </select>
 
-      <select id="quickTime">
-        <option value=""> Chọn suất</option>
-      </select>
+        <select id="quickTime">
+            <option value=""> Chọn suất</option>
+        </select>
 
-      <button id="quickBuyBtn">Mua vé nhanh</button>
+        <button id="quickBuyBtn">Mua vé nhanh</button>
     </section>
 
     <section class="search-row">
-      <input id="searchInput" type="text" placeholder="Tìm theo tên phim, thể loại, đạo diễn..." />
-      <button id="searchBtn">Tìm</button>
-      <button id="resetBtn">Reset</button>
+        <input id="searchInput" type="text" placeholder="Tìm theo tên phim, thể loại, đạo diễn..."/>
+        <button id="searchBtn">Tìm</button>
+        <button id="resetBtn">Reset</button>
     </section>
 
     <section class="section-title" id="movieSection">
-      <h2>PHIM</h2>
-      <div class="tabs">
-        <button class="tab active">Đang chiếu</button>
-        <button class="tab">Sắp chiếu</button>
-        <button class="tab">Phim IMAX</button>
-        <button class="tab">Toàn quốc</button>
-      </div>
+        <h2>PHIM</h2>
+        <div class="tabs">
+            <button class="tab active">Đang chiếu</button>
+            <button class="tab">Sắp chiếu</button>
+            <button class="tab">Phim IMAX</button>
+            <button class="tab">Toàn quốc</button>
+        </div>
     </section>
 
     <section id="movieGrid" class="movie-grid"></section>
 
     <div class="center-action">
-      <button class="outline-btn">Xem thêm ›</button>
+        <button class="outline-btn" id="loadMoreMoviesBtn" type="button">Xem thêm ›</button>
     </div>
 
     <section class="cinema-corner">
-      <div class="section-title">
-        <h2>GÓC ĐIỆN ẢNH</h2>
-        <div class="tabs">
-          <button class="tab active">Bình luận phim</button>
-          <button class="tab">Blog điện ảnh</button>
+        <div class="section-title">
+            <h2>GÓC ĐIỆN ẢNH</h2>
+            <div class="tabs">
+                <button class="tab active" id="reviewTabBtn" type="button">Bình luận phim</button>
+                <button class="tab" id="blogTabBtn" type="button">Blog điện ảnh</button>
+            </div>
         </div>
-      </div>
 
-      <div class="article-layout">
-        <article class="featured-article">
-          <div class="article-image article-main-img"></div>
-          <h3>[Review] Doraemon Nobita và Lâu Đài Dưới Đáy Biển: Mèo Ú còn lâu mới hết thời!</h3>
-          <div class="article-stats">
-            <span>👍 Thích</span>
-            <span>👁 28</span>
-          </div>
-        </article>
+        <div class="article-layout" id="articleLayout">
+            <article class="featured-article" id="featuredArticle">
+                <div class="article-image article-main-img" id="featuredArticleImg"></div>
+                <h3 id="featuredArticleTitle">Đang tải...</h3>
+                <div class="article-stats">
+                    <span id="featuredArticleDesc"></span>
+                </div>
+            </article>
 
-        <div class="article-list">
-          <article>
-            <div class="thumb thumb-1"></div>
-            <div>
-              <h3>[Review] The Devil Wears Prada 2: Ai cũng sợ mất việc thôi...</h3>
-              <span>👁 94</span>
-            </div>
-          </article>
-
-          <article>
-            <div class="thumb thumb-2"></div>
-            <div>
-              <h3>[Review] Anh Hùng: Thái Hòa quá xuất sắc!</h3>
-              <span>👁 1271</span>
-            </div>
-          </article>
-
-          <article>
-            <div class="thumb thumb-3"></div>
-            <div>
-              <h3>[Review] Trùm Sò: Câu chuyện dân gian được làm mới...</h3>
-              <span>👁 1218</span>
-            </div>
-          </article>
+            <div class="article-list" id="articleList"></div>
         </div>
-      </div>
     </section>
 
     <section class="promo-section">
-      <div class="section-title">
-        <h2>TIN KHUYẾN MÃI</h2>
-      </div>
+        <div class="section-title">
+            <h2>TIN KHUYẾN MÃI</h2>
+        </div>
 
-      <div class="promo-grid" id="promoGrid">
+        <div class="promo-grid" id="promoGrid">
 
-        <article class="promo-card blue">
-          <h3>Thứ Ba vui vẻ</h3>
-          <p>Vé chỉ từ 45K cho thành viên.</p>
-        </article>
+            <article class="promo-card blue">
+                <h3>Thứ Ba vui vẻ</h3>
+                <p>Vé chỉ từ 45K cho thành viên.</p>
+            </article>
 
-        <article class="promo-card navy">
-          <h3>Quyền lợi thành viên</h3>
-          <p>Tích điểm đổi quà, nhận ưu đãi riêng.</p>
-        </article>
+            <article class="promo-card navy">
+                <h3>Quyền lợi thành viên</h3>
+                <p>Tích điểm đổi quà, nhận ưu đãi riêng.</p>
+            </article>
 
-        <article class="promo-card lime">
-          <h3>Combo bắp nước</h3>
-          <p>Ưu đãi combo khi đặt vé online.</p>
-        </article>
+            <article class="promo-card lime">
+                <h3>Combo bắp nước</h3>
+                <p>Ưu đãi combo khi đặt vé online.</p>
+            </article>
 
-        <article class="promo-card mint">
-          <h3>Thanh toán online</h3>
-          <p>Đặt vé nhanh, không cần xếp hàng.</p>
-        </article>
-      </div>
+            <article class="promo-card mint">
+                <h3>Thanh toán online</h3>
+                <p>Đặt vé nhanh, không cần xếp hàng.</p>
+            </article>
+        </div>
     </section>
 
     <section class="app-promo">
-      <div class="phone-mockup">
-        <div class="phone-screen">
-          <div class="phone-poster"></div>
-          <h4>Đặt vé Online</h4>
-          <p>Chọn ghế, thanh toán, xem vé đã mua.</p>
+        <div class="phone-mockup">
+            <div class="phone-screen">
+                <div class="phone-poster"></div>
+                <h4>Đặt vé Online</h4>
+                <p>Chọn ghế, thanh toán, xem vé đã mua.</p>
+            </div>
         </div>
-      </div>
 
-      <div class="app-promo-text">
-        <h2>Đặt Vé Online - Không Lo Trễ Nải</h2>
-        <p>Ghét đông đúc ồn ào? Lười xếp hàng mua vé? Đặt vé nhanh trên CineGO chỉ với vài thao tác.</p>
-        <div class="qr-row">
-          <div class="qr-box">QR</div>
-          <span>OR</span>
-          <button>App Store</button>
-          <button>Google Play</button>
+        <div class="app-promo-text">
+            <h2>Đặt Vé Online - Không Lo Trễ Nải</h2>
+            <p>Ghét đông đúc ồn ào? Lười xếp hàng mua vé? Đặt vé nhanh trên CineGO chỉ với vài thao tác.</p>
+            <div class="qr-row">
+                <div class="qr-box">QR</div>
+                <span>OR</span>
+                <button>App Store</button>
+                <button>Google Play</button>
+            </div>
         </div>
-      </div>
     </section>
 
     <section class="about-section">
-      <div class="section-title">
-        <h2>TRANG CHỦ</h2>
-      </div>
+        <div class="section-title">
+            <h2>TRANG CHỦ</h2>
+        </div>
 
-      <p>
-        CineGO là ứng dụng đặt vé xem phim desktop được xây dựng cho đồ án, hỗ trợ người dùng xem phim đang chiếu,
-        chọn suất chiếu, chọn ghế, thanh toán demo và quản lý vé đã mua.
-      </p>
+        <p>
+            CineGO là ứng dụng đặt vé xem phim desktop được xây dựng cho đồ án, hỗ trợ người dùng xem phim đang chiếu,
+            chọn suất chiếu, chọn ghế, thanh toán demo và quản lý vé đã mua.
+        </p>
 
-      <p>
-        Giao diện được thiết kế theo phong cách rạp chiếu phim hiện đại, tập trung vào thao tác nhanh,
-        dễ quan sát phim, lịch chiếu và các ưu đãi nổi bật.
-      </p>
+        <p>
+            Giao diện được thiết kế theo phong cách rạp chiếu phim hiện đại, tập trung vào thao tác nhanh,
+            dễ quan sát phim, lịch chiếu và các ưu đãi nổi bật.
+        </p>
     </section>
-  </main>
+</main>
 
-  <footer class="footer">
-  <div>
-    <h3>GIỚI THIỆU</h3>
-    <button class="footer-link" onclick="openFooterPage('about')">Về chúng tôi</button>
-    <button class="footer-link" onclick="openFooterPage('terms')">Thoả thuận sử dụng</button>
-    <button class="footer-link" onclick="openFooterPage('privacy')">Chính sách bảo mật</button>
-  </div>
+<footer class="footer">
+    <div>
+        <h3>GIỚI THIỆU</h3>
+        <button class="footer-link" onclick="openFooterPage('about')">Về chúng tôi</button>
+        <button class="footer-link" onclick="openFooterPage('terms')">Thoả thuận sử dụng</button>
+        <button class="footer-link" onclick="openFooterPage('privacy')">Chính sách bảo mật</button>
+    </div>
 
-  <div>
-    <h3>GÓC ĐIỆN ẢNH</h3>
-    <button class="footer-link" onclick="scrollToMovies()">Thể loại phim</button>
-    <button class="footer-link" onclick="setCinemaCornerTab('article_review')">Bình luận phim</button>
-    <button class="footer-link" onclick="setCinemaCornerTab('article_blog')">Blog điện ảnh</button>
-  </div>
+    <div>
+        <h3>GÓC ĐIỆN ẢNH</h3>
+        <button class="footer-link" onclick="scrollToMovies()">Thể loại phim</button>
+        <button class="footer-link" onclick="setCinemaCornerTab('article_review')">Bình luận phim</button>
+        <button class="footer-link" onclick="setCinemaCornerTab('article_blog')">Blog điện ảnh</button>
+    </div>
 
-  <div>
-    <h3>HỖ TRỢ</h3>
-    <button class="footer-link" onclick="openFooterPage('feedback')">Góp ý</button>
-    <button class="footer-link" onclick="openContentView('cinema')">Rạp</button>
-    <button class="footer-link" onclick="openFooterPage('faq')">FAQ</button>
-  </div>
+    <div>
+        <h3>HỖ TRỢ</h3>
+        <button class="footer-link" onclick="openFooterPage('feedback')">Góp ý</button>
+        <button class="footer-link" onclick="openContentView('cinema')">Rạp</button>
+        <button class="footer-link" onclick="openFooterPage('faq')">FAQ</button>
+    </div>
 
-  <div class="footer-brand">
-    <div class="logo-mark">CG</div>
-    <strong>CineGo</strong>
-    <p>Desktop Movie Ticket App</p>
-  </div>
+    <div class="footer-brand">
+        <div class="logo-mark">CG</div>
+        <strong>CineGo</strong>
+        <p>Desktop Movie Ticket App</p>
+    </div>
 </footer>
 
-  <div id="detailModal" class="modal hidden">
+<div id="detailModal" class="modal hidden">
     <div class="modal-backdrop" onclick="closeDetail()"></div>
 
     <section class="detail-panel">
-      <button class="modal-close" onclick="closeDetail()">×</button>
+        <button class="modal-close" onclick="closeDetail()">×</button>
 
-      <div class="detail-layout">
-        <div class="detail-poster">
-          <img id="detailImage" alt="Poster phim" />
+        <div class="detail-layout">
+            <div class="detail-poster">
+                <img id="detailImage" alt="Poster phim"/>
+            </div>
+
+            <div class="detail-info">
+                <h2 id="detailTitle"></h2>
+
+                <div class="detail-meta">
+                    <div><strong>Thể loại:</strong> <span id="detailGenre"></span></div>
+                    <div><strong>Thời lượng:</strong> <span id="detailDuration"></span></div>
+                    <div><strong>Đạo diễn:</strong> <span id="detailDirector"></span></div>
+                    <div><strong>Diễn viên:</strong> <span id="detailActors"></span></div>
+                    <div><strong>Suất chiếu:</strong> <span id="detailTimes"></span></div>
+                    <div><strong>Giá vé:</strong> <span id="detailPrice"></span></div>
+                </div>
+
+                <h3>Ngày chiếu</h3>
+                <div id="detailDates" class="date-list"></div>
+
+                <h3>Nội dung phim</h3>
+                <p id="detailDescription" class="detail-description"></p>
+
+                <div class="detail-actions">
+                    <button id="detailBuyBtn">Mua vé ngay</button>
+                    <button onclick="closeDetail()" class="secondary-btn">Đóng</button>
+                </div>
+            </div>
         </div>
-
-        <div class="detail-info">
-          <h2 id="detailTitle"></h2>
-
-          <div class="detail-meta">
-            <div><strong>Thể loại:</strong> <span id="detailGenre"></span></div>
-            <div><strong>Thời lượng:</strong> <span id="detailDuration"></span></div>
-            <div><strong>Đạo diễn:</strong> <span id="detailDirector"></span></div>
-            <div><strong>Diễn viên:</strong> <span id="detailActors"></span></div>
-            <div><strong>Suất chiếu:</strong> <span id="detailTimes"></span></div>
-            <div><strong>Giá vé:</strong> <span id="detailPrice"></span></div>
-          </div>
-
-          <h3>Ngày chiếu</h3>
-          <div id="detailDates" class="date-list"></div>
-
-          <h3>Nội dung phim</h3>
-          <p id="detailDescription" class="detail-description"></p>
-
-          <div class="detail-actions">
-            <button id="detailBuyBtn">Mua vé ngay</button>
-            <button onclick="closeDetail()" class="secondary-btn">Đóng</button>
-          </div>
-        </div>
-      </div>
     </section>
-  </div>
+</div>
 
-  <div id="bookingModal" class="modal hidden">
+<div id="bookingModal" class="modal hidden">
     <div class="modal-backdrop" onclick="closeBooking()"></div>
 
     <section class="booking-panel">
-      <button class="modal-close" onclick="closeBooking()">×</button>
+        <button class="modal-close" onclick="closeBooking()">×</button>
 
-      <div class="booking-header">
-        <div>
-          <h2 id="bookingTitle">Đặt vé</h2>
-          <p id="bookingSub"></p>
+        <div class="booking-header">
+            <div>
+                <h2 id="bookingTitle">Đặt vé</h2>
+                <p id="bookingSub"></p>
+            </div>
+
+            <div class="booking-total">
+                <span>Tổng tiền</span>
+                <strong id="bookingTotal">0 VNĐ</strong>
+            </div>
         </div>
 
-        <div class="booking-total">
-          <span>Tổng tiền</span>
-          <strong id="bookingTotal">0 VNĐ</strong>
+        <div class="booking-options">
+            <label>
+                Ngày chiếu
+                <select id="bookingDate"></select>
+            </label>
+
+            <label>
+                Suất chiếu
+                <select id="bookingTime"></select>
+            </label>
         </div>
-      </div>
 
-      <div class="booking-options">
-        <label>
-          Ngày chiếu
-          <select id="bookingDate"></select>
-        </label>
+        <div class="screen-line">
+            <div></div>
+            <span>MÀN HÌNH</span>
+        </div>
 
-        <label>
-          Suất chiếu
-          <select id="bookingTime"></select>
-        </label>
-      </div>
+        <div id="seatGrid" class="seat-grid"></div>
 
-      <div class="screen-line">
-        <div></div>
-        <span>MÀN HÌNH</span>
-      </div>
+        <div class="seat-legend">
+            <span><i class="seat-box available"></i> Còn trống</span>
+            <span><i class="seat-box selected"></i> Đang chọn</span>
+            <span><i class="seat-box booked"></i> Đã đặt</span>
+        </div>
 
-      <div id="seatGrid" class="seat-grid"></div>
+        <div class="payment-box">
+            <h3>Phương thức thanh toán</h3>
 
-      <div class="seat-legend">
-        <span><i class="seat-box available"></i> Còn trống</span>
-        <span><i class="seat-box selected"></i> Đang chọn</span>
-        <span><i class="seat-box booked"></i> Đã đặt</span>
-      </div>
+            <div class="payment-methods">
+                <label>
+                    <input type="radio" name="paymentMethod" value="cash" checked/>
+                    Thanh toán tiền mặt
+                </label>
 
-      <div class="booking-actions">
-        <button id="continuePaymentBtn">Tiếp tục thanh toán</button>
-        <button onclick="closeBooking()" class="secondary-btn">Đóng</button>
-      </div>
+                <label>
+                    <input type="radio" name="paymentMethod" value="bank"/>
+                    Chuyển khoản ngân hàng
+                </label>
+            </div>
+
+            <div id="bankTransferBox" class="bank-transfer-box hidden">
+                <div class="bank-info">
+                    <p>Số tiền cần chuyển</p>
+                    <strong id="transferAmount">0 VNĐ</strong>
+                    <span id="transferAccount">BIDV - 96247CINEGO</span>
+                    <small id="transferNote">Nội dung chuyển khoản sẽ tự tạo theo vé.</small>
+                    <em id="paymentWaitingText">Quét QR bằng app ngân hàng để chuyển khoản.</em>
+                </div>
+
+                <img id="bankQrImage" alt="Mã QR chuyển khoản"/>
+            </div>
+        </div>
+
+        <div class="booking-actions">
+            <button id="continuePaymentBtn">Tiếp tục thanh toán</button>
+            <button onclick="closeBooking()" class="secondary-btn">Đóng</button>
+        </div>
     </section>
-  </div>
-  <div id="ticketsModal" class="modal hidden">
-  <div class="modal-backdrop" onclick="closeTickets()"></div>
+</div>
+<div id="ticketsModal" class="modal hidden">
+    <div class="modal-backdrop" onclick="closeTickets()"></div>
 
-  <section class="tickets-panel">
-    <button class="modal-close" onclick="closeTickets()">×</button>
+    <section class="tickets-panel">
+        <button class="modal-close" onclick="closeTickets()">×</button>
 
-    <div class="tickets-header">
-      <h2>Vé của tôi</h2>
-      <p>Danh sách vé đã đặt trong ứng dụng.</p>
-    </div>
-
-    <div id="ticketsList" class="tickets-list"></div>
-  </section>
-  </div>
-  <div id="loginModal" class="modal hidden">
-  <div class="modal-backdrop" onclick="closeLogin()"></div>
-
-  <section class="login-panel">
-    <button class="modal-close" onclick="closeLogin()">×</button>
-
-    <h2 id="authTitle">Đăng nhập</h2>
-    <p id="authSubtitle">Đăng nhập để đặt vé và xem vé đã mua.</p>
-
-    <label>
-      Tài khoản
-      <input id="authUsername" type="text" />
-    </label>
-
-    <label>
-      Mật khẩu
-      <input id="authPassword" type="password" />
-    </label>
-
-    <div id="registerExtra" class="hidden">
-      <label>
-        Email
-        <input id="authEmail" type="email" placeholder="Chỉ nhập email hoặc số điện thoại" />
-      </label>
-
-      <label>
-        Số điện thoại
-        <input id="authPhone" type="text" placeholder="Chỉ nhập một trong hai" />
-      </label>
-    </div>
-
-    <p id="authMessage" class="auth-message"></p>
-
-    <button id="submitAuthBtn" class="auth-main-btn">Đăng nhập</button>
-    <button id="switchAuthBtn" class="auth-switch-btn">Chưa có tài khoản? Đăng ký</button>
-  </section>
-  </div>
-  <div id="contentAdminModal" class="modal hidden">
-  <div class="modal-backdrop" onclick="closeContentAdmin()"></div>
-
-  <section class="content-admin-panel">
-    <button class="modal-close" onclick="closeContentAdmin()">×</button>
-
-    <div class="content-admin-header">
-      <div>
-        <h2>Quản lý nội dung</h2>
-        <p>Thêm/sửa/xóa ưu đãi, sự kiện, rạp phim và rạp đặc biệt.</p>
-      </div>
-
-      <button id="newContentBtn">Thêm mới</button>
-    </div>
-
-    <div class="content-tabs">
-      <button class="content-tab active" data-category="offer">Ưu đãi</button>
-      <button class="content-tab" data-category="event">Sự kiện</button>
-      <button class="content-tab" data-category="cinema">Rạp phim</button>
-      <button class="content-tab" data-category="special">Rạp đặc biệt</button>
-      <button class="content-tab" data-category="article_review">Bình luận phim</button>
-<button class="content-tab" data-category="article_blog">Blog điện ảnh</button>
-    </div>
-
-    <div class="content-admin-layout">
-      <div>
-        <h3>Danh sách</h3>
-        <div id="adminContentList" class="admin-content-list"></div>
-      </div>
-
-      <form id="contentForm" class="content-form">
-        <h3 id="contentFormTitle">Thêm nội dung</h3>
-
-        <label>
-          Loại nội dung
-          <select id="contentCategory">
-            <option value="offer">Ưu đãi</option>
-            <option value="event">Sự kiện</option>
-            <option value="cinema">Rạp phim</option>
-            <option value="special">Rạp đặc biệt</option>
-          </select>
-        </label>
-
-        <label>
-          Tiêu đề *
-          <input id="contentTitle" type="text" />
-        </label>
-
-        <label>
-          Dòng phụ
-          <input id="contentSubtitle" type="text" />
-        </label>
-
-        <label>
-          Đường dẫn ảnh
-          <input id="contentImagePath" type="text" placeholder="VD: C:\Users\Admin\Downloads\poster.jpg" />
-        </label>
-
-        <label>
-          Trạng thái
-          <select id="contentStatus">
-            <option value="active">Hiển thị</option>
-            <option value="hidden">Ẩn</option>
-          </select>
-        </label>
-
-        <label>
-          Mô tả
-          <textarea id="contentDescription"></textarea>
-        </label>
-
-        <p id="contentMessage" class="auth-message"></p>
-
-        <div class="content-form-actions">
-          <button type="submit">Lưu nội dung</button>
-          <button type="button" class="secondary-btn" id="clearContentFormBtn">Làm mới</button>
+        <div class="tickets-header">
+            <h2>Vé của tôi</h2>
+            <p>Danh sách vé đã đặt trong ứng dụng.</p>
         </div>
-      </form>
-    </div>
-  </section>
+
+        <div id="ticketsList" class="tickets-list"></div>
+    </section>
+</div>
+<div id="loginModal" class="modal hidden">
+    <div class="modal-backdrop" onclick="closeLogin()"></div>
+
+    <section class="login-panel">
+        <button class="modal-close" onclick="closeLogin()">×</button>
+
+        <h2 id="authTitle">Đăng nhập</h2>
+        <p id="authSubtitle">Đăng nhập để đặt vé và xem vé đã mua.</p>
+
+        <label>
+            Tài khoản
+            <input id="authUsername" type="text"/>
+        </label>
+
+        <label>
+            Mật khẩu
+            <input id="authPassword" type="password"/>
+        </label>
+
+        <div id="registerExtra" class="hidden">
+            <label>
+                Email
+                <input id="authEmail" type="email" placeholder="Chỉ nhập email hoặc số điện thoại"/>
+            </label>
+
+            <label>
+                Số điện thoại
+                <input id="authPhone" type="text" placeholder="Chỉ nhập một trong hai"/>
+            </label>
+        </div>
+
+        <p id="authMessage" class="auth-message"></p>
+
+        <button id="submitAuthBtn" class="auth-main-btn">Đăng nhập</button>
+        <button id="switchAuthBtn" class="auth-switch-btn">Chưa có tài khoản? Đăng ký</button>
+    </section>
+</div>
+<div id="contentAdminModal" class="modal hidden">
+    <div class="modal-backdrop" onclick="closeContentAdmin()"></div>
+
+    <section class="content-admin-panel">
+        <button class="modal-close" onclick="closeContentAdmin()">×</button>
+
+        <div class="content-admin-header">
+            <div>
+                <h2>Quản lý nội dung</h2>
+                <p>Thêm/sửa/xóa ưu đãi, sự kiện, rạp phim và rạp đặc biệt.</p>
+            </div>
+
+            <button id="newContentBtn">Thêm mới</button>
+        </div>
+
+        <div class="content-tabs">
+            <button class="content-tab active" data-category="offer">Ưu đãi</button>
+            <button class="content-tab" data-category="event">Sự kiện</button>
+            <button class="content-tab" data-category="cinema">Rạp phim</button>
+            <button class="content-tab" data-category="special">Rạp đặc biệt</button>
+            <button class="content-tab" data-category="article_review">Bình luận phim</button>
+            <button class="content-tab" data-category="article_blog">Blog điện ảnh</button>
+        </div>
+
+        <div class="content-admin-layout">
+            <div>
+                <h3>Danh sách</h3>
+                <div id="adminContentList" class="admin-content-list"></div>
+            </div>
+
+            <form id="contentForm" class="content-form">
+                <h3 id="contentFormTitle">Thêm nội dung</h3>
+
+                <label>
+                    Loại nội dung
+                    <select id="contentCategory">
+                        <option value="offer">Ưu đãi</option>
+                        <option value="event">Sự kiện</option>
+                        <option value="cinema">Rạp phim</option>
+                        <option value="special">Rạp đặc biệt</option>
+                        <option value="article_review">Bình luận phim</option>
+                        <option value="article_blog">Blog điện ảnh</option>
+                    </select>
+                </label>
+
+                <label>
+                    Tiêu đề *
+                    <input id="contentTitle" type="text"/>
+                </label>
+
+                <label>
+                    Dòng phụ
+                    <input id="contentSubtitle" type="text"/>
+                </label>
+
+                <label>
+                    Đường dẫn ảnh
+                    <input id="contentImagePath" type="text" placeholder="VD: C:\Users\Admin\Downloads\poster.jpg"/>
+                </label>
+
+                <label>
+                    Trạng thái
+                    <select id="contentStatus">
+                        <option value="active">Hiển thị</option>
+                        <option value="hidden">Ẩn</option>
+                    </select>
+                </label>
+
+                <label>
+                    Mô tả
+                    <textarea id="contentDescription"></textarea>
+                </label>
+
+                <p id="contentMessage" class="auth-message"></p>
+
+                <div class="content-form-actions">
+                    <button type="submit">Lưu nội dung</button>
+                    <button type="button" class="secondary-btn" id="clearContentFormBtn">Làm mới</button>
+                </div>
+            </form>
+        </div>
+    </section>
 </div>
 
 <div id="contentViewModal" class="modal hidden">
-  <div class="modal-backdrop" onclick="closeContentView()"></div>
+    <div class="modal-backdrop" onclick="closeContentView()"></div>
 
-  <section class="content-view-panel">
-    <button class="modal-close" onclick="closeContentView()">×</button>
+    <section class="content-view-panel">
+        <button class="modal-close" onclick="closeContentView()">×</button>
 
-    <h2 id="contentViewTitle">Nội dung</h2>
-    <p id="contentViewSub"></p>
+        <h2 id="contentViewTitle">Nội dung</h2>
+        <p id="contentViewSub"></p>
 
-    <div id="contentViewList" class="content-view-list"></div>
-  </section>
+        <div id="contentViewList" class="content-view-list"></div>
+    </section>
 </div>
 <div id="movieAdminModal" class="modal hidden">
-  <div class="modal-backdrop" onclick="closeMovieAdmin()"></div>
+    <div class="modal-backdrop" onclick="closeMovieAdmin()"></div>
 
-  <section class="movie-admin-panel">
-    <button class="modal-close" onclick="closeMovieAdmin()">×</button>
+    <section class="movie-admin-panel">
+        <button class="modal-close" onclick="closeMovieAdmin()">×</button>
 
-    <div class="movie-admin-header">
-      <div>
-        <h2>Quản lý phim</h2>
-        <p>Thêm, sửa, xóa phim đang chiếu trong hệ thống.</p>
-      </div>
+        <div class="movie-admin-header">
+            <div>
+                <h2>Quản lý phim</h2>
+                <p>Thêm, sửa, xóa phim đang chiếu trong hệ thống.</p>
+            </div>
 
-      <button id="newMovieBtn">Thêm phim</button>
-    </div>
-
-    <div class="movie-admin-layout">
-      <div>
-        <h3>Danh sách phim</h3>
-        <div id="adminMovieList" class="admin-movie-list"></div>
-      </div>
-
-      <form id="movieForm" class="movie-form">
-        <h3 id="movieFormTitle">Thêm phim</h3>
-
-        <input id="movieId" type="hidden" />
-
-        <label>
-          Tên phim *
-          <input id="movieName" type="text" />
-        </label>
-
-        <label>
-          Thể loại *
-          <input id="movieGenre" type="text" placeholder="VD: Hành động, Kinh dị" />
-        </label>
-
-        <div class="form-two-cols">
-          <label>
-            Thời lượng *
-            <input id="movieDuration" type="number" placeholder="VD: 120" />
-          </label>
-
-          <label>
-            Giá vé *
-            <input id="moviePrice" type="number" placeholder="VD: 90000" />
-          </label>
+            <button id="newMovieBtn">Thêm phim</button>
         </div>
 
-        <label>
-          Đạo diễn
-          <input id="movieDirector" type="text" />
-        </label>
+        <div class="movie-admin-layout">
+            <div>
+                <h3>Danh sách phim</h3>
+                <div id="adminMovieList" class="admin-movie-list"></div>
+            </div>
 
-        <label>
-          Diễn viên
-          <input id="movieActors" type="text" />
-        </label>
+            <form id="movieForm" class="movie-form">
+                <h3 id="movieFormTitle">Thêm phim</h3>
 
-        <label>
-          Ngày chiếu *
-          <input id="movieDates" type="text" placeholder="VD: 24/05/2026, 25/05/2026" />
-        </label>
+                <input id="movieId" type="hidden"/>
 
-        <label>
-          Suất chiếu *
-          <input id="movieTimes" type="text" placeholder="VD: 10:00, 12:00, 19:30" />
-        </label>
-        <div class="form-two-cols">
-  <label>
-    Trạng thái phim
-    <select id="movieStatus">
-      <option value="now_showing">Đang chiếu</option>
-      <option value="coming_soon">Sắp chiếu</option>
-      <option value="imax">Phim IMAX</option>
-    </select>
-  </label>
+                <label>
+                    Tên phim *
+                    <input id="movieName" type="text"/>
+                </label>
 
-  <label class="checkbox-label">
-    <input id="movieIsHot" type="checkbox" />
-    Hiện ở banner hot
-  </label>
-          <label id="movieBannerField" class="hidden">
-  Đường dẫn ảnh banner
-  <input id="movieBannerImagePath" type="text" placeholder="VD: assets\banners\avengers-banner.jpg" />
-</label>
-</div>
+                <label>
+                    Thể loại *
+                    <input id="movieGenre" type="text" placeholder="VD: Hành động, Kinh dị"/>
+                </label>
 
-        <label>
-          Đường dẫn ảnh poster
-          <input id="movieImagePath" type="text" placeholder="VD: C:\Users\Admin\Downloads\poster.jpg" />
-        </label>
+                <div class="form-two-cols">
+                    <label>
+                        Thời lượng *
+                        <input id="movieDuration" type="number" placeholder="VD: 120"/>
+                    </label>
 
-        <label>
-          Mô tả phim
-          <textarea id="movieDescription"></textarea>
-        </label>
+                    <label>
+                        Giá vé *
+                        <input id="moviePrice" type="number" placeholder="VD: 90000"/>
+                    </label>
+                </div>
 
-        <p id="movieMessage" class="auth-message"></p>
+                <label>
+                    Đạo diễn
+                    <input id="movieDirector" type="text"/>
+                </label>
 
-        <div class="movie-form-actions">
-          <button type="submit">Lưu phim</button>
-          <button type="button" class="secondary-btn" id="clearMovieFormBtn">Làm mới</button>
+                <label>
+                    Diễn viên
+                    <input id="movieActors" type="text"/>
+                </label>
+
+                <label>
+                    Ngày chiếu *
+                    <input id="movieDates" type="text" placeholder="VD: 24/05/2026, 25/05/2026"/>
+                </label>
+
+                <label>
+                    Suất chiếu *
+                    <input id="movieTimes" type="text" placeholder="VD: 10:00, 12:00, 19:30"/>
+                </label>
+                <div class="form-two-cols">
+                    <label>
+                        Trạng thái phim
+                        <select id="movieStatus">
+                            <option value="now_showing">Đang chiếu</option>
+                            <option value="coming_soon">Sắp chiếu</option>
+                            <option value="imax">Phim IMAX</option>
+                        </select>
+                    </label>
+
+                    <label class="checkbox-label">
+                        <input id="movieIsHot" type="checkbox"/>
+                        Hiện ở banner hot
+                    </label>
+                    <label id="movieBannerField" class="hidden">
+                        Đường dẫn ảnh banner
+                        <input id="movieBannerImagePath" type="text"
+                               placeholder="VD: assets\banners\avengers-banner.jpg"/>
+                    </label>
+                </div>
+
+                <label>
+                    Đường dẫn ảnh poster
+                    <input id="movieImagePath" type="text" placeholder="VD: C:\Users\Admin\Downloads\poster.jpg"/>
+                </label>
+
+                <label>
+                    Mô tả phim
+                    <textarea id="movieDescription"></textarea>
+                </label>
+
+                <p id="movieMessage" class="auth-message"></p>
+
+                <div class="movie-form-actions">
+                    <button type="submit">Lưu phim</button>
+                    <button type="button" class="secondary-btn" id="clearMovieFormBtn">Làm mới</button>
+                </div>
+            </form>
         </div>
-      </form>
-    </div>
-  </section>
+    </section>
 </div>
 
-  <script src="app.js"></script>
+<script src="app.js"></script>
 </body>
 </html>
-function openFooterPage(type) {
-  const pages = {
-    about: {
-      title: "Về chúng tôi",
-      body: "CineGo là ứng dụng đặt vé xem phim desktop, hỗ trợ xem phim đang chiếu, chọn suất chiếu, chọn ghế, thanh toán demo và quản lý vé đã mua."
-    },
-    terms: {
-      title: "Thoả thuận sử dụng",
-      body: "Người dùng cần cung cấp thông tin chính xác khi đăng ký, đặt vé và thanh toán. Dữ liệu trong đồ án được sử dụng cho mục đích mô phỏng hệ thống đặt vé xem phim."
-    },
-    privacy: {
-      title: "Chính sách bảo mật",
-      body: "CineGo lưu thông tin tài khoản, vé đã mua và lịch sử thanh toán trong cơ sở dữ liệu SQLite cục bộ. Mật khẩu và dữ liệu người dùng chỉ phục vụ cho đồ án demo."
-    },
-    feedback: {
-      title: "Góp ý",
-      body: "Người dùng có thể gửi góp ý về giao diện, chức năng đặt vé, thanh toán và trải nghiệm sử dụng để hệ thống được hoàn thiện hơn."
-    },
-    faq: {
-      title: "FAQ",
-      body: "Câu hỏi thường gặp:\n\n1. Có cần đăng nhập để đặt vé không?\nCó, người dùng cần đăng nhập trước khi đặt vé.\n\n2. Vé đã mua xem ở đâu?\nVào mục Vé của tôi.\n\n3. Thanh toán có phải thật không?\nHiện tại là thanh toán demo phục vụ đồ án."
-    }
-  };
-
-  const page = pages[type];
-  if (!page) return;
-
-  document.getElementById("contentViewTitle").textContent = page.title;
-  document.getElementById("contentViewSub").textContent = "Thông tin hệ thống CineGo";
-  document.getElementById("contentViewList").innerHTML = `
-    <article class="footer-page-content">
-      <p>${page.body}</p>
-    </article>
-  `;
-
-  document.getElementById("contentViewModal").classList.remove("hidden");
-}

@@ -1,5 +1,6 @@
 let movies = [];
 let bookingMovie = null;
+let bookingCinema = "";
 let selectedSeats = [];
 let bookedSeats = [];
 let appInitialized = false;
@@ -12,10 +13,174 @@ let editingMovieId = null;
 let hotMovies = [];
 let currentHeroIndex = 0;
 let heroTimer = null;
+let paymentCheckTimer = null;
+let waitingBankPayment = false;
+let currentMovieList = [];
+let visibleMovieCount = 10;
+const MOVIES_PER_PAGE = 10;
+const BANK_CONFIG = {
+  bankId: "BIDV",
+  bankName: "BIDV",
+  accountNo: "96247CINEGO",
+  accountName: "NGUYEN KHAC CUONG",
+  template: "compact2"
+};
 function formatMoney(value) {
   return Number(value || 0).toLocaleString("vi-VN") + " VNĐ";
 }
+function getBookingTotal() {
+    return Math.round(selectedSeats.length * Number(bookingMovie?.price || 0));
+}
 
+function getSelectedPaymentMethod() {
+  return document.querySelector('input[name="paymentMethod"]:checked')?.value || "cash";
+}
+
+function paymentMethodLabel(method) {
+  return method === "bank" ? "Chuyển khoản ngân hàng" : "Tiền mặt";
+}
+
+function getTransferNote() {
+  const movieId = bookingMovie?.id || "PHIM";
+  const seatsText = selectedSeats.length ? selectedSeats.join("-") : "GHE";
+  return `CINEGO${movieId}${seatsText}`.replace(/[^A-Z0-9]/gi, "").toUpperCase();
+}
+
+function createBankQrUrl(amount) {
+  const note = getTransferNote();
+
+  return `https://img.vietqr.io/image/${BANK_CONFIG.bankId}-${BANK_CONFIG.accountNo}-${BANK_CONFIG.template}.png` +
+    `?amount=${amount}` +
+    `&addInfo=${encodeURIComponent(note)}` +
+    `&accountName=${encodeURIComponent(BANK_CONFIG.accountName)}`;
+}
+
+function updatePaymentBox() {
+  const bankBox = document.getElementById("bankTransferBox");
+  const qrImage = document.getElementById("bankQrImage");
+  const transferAmount = document.getElementById("transferAmount");
+  const transferAccount = document.getElementById("transferAccount");
+  const transferNote = document.getElementById("transferNote");
+
+  if (!bankBox || !qrImage || !transferAmount || !transferAccount || !transferNote) return;
+
+  const method = getSelectedPaymentMethod();
+  const total = getBookingTotal();
+  const note = getTransferNote();
+
+  bankBox.classList.toggle("hidden", method !== "bank");
+
+  transferAmount.textContent = formatMoney(total);
+  transferAccount.textContent = `${BANK_CONFIG.bankName} - ${BANK_CONFIG.accountNo} - ${BANK_CONFIG.accountName}`;
+  transferNote.textContent = `Nội dung chuyển khoản: ${note}`;
+
+  if (method === "bank" && total > 0) {
+    qrImage.src = createBankQrUrl(total);
+  } else {
+    qrImage.removeAttribute("src");
+  }
+}
+function setBankWaiting(isWaiting) {
+  waitingBankPayment = isWaiting;
+
+  const btn = document.getElementById("continuePaymentBtn");
+  const waitingText = document.getElementById("paymentWaitingText");
+
+  if (btn) {
+    btn.disabled = isWaiting;
+    btn.textContent = isWaiting ? "Đang chờ chuyển khoản..." : "Tiếp tục thanh toán";
+  }
+
+  if (waitingText) {
+    waitingText.textContent = isWaiting
+      ? "Đang chờ SePay xác nhận giao dịch. Vui lòng không tắt cửa sổ này."
+      : "Quét QR bằng app ngân hàng để chuyển khoản.";
+  }
+}
+
+function stopPaymentPolling() {
+  if (paymentCheckTimer) {
+    clearInterval(paymentCheckTimer);
+    paymentCheckTimer = null;
+  }
+
+  setBankWaiting(false);
+}
+
+async function completeBookingAfterPayment(method) {
+  const showDate = document.getElementById("bookingDate").value;
+  const showTime = document.getElementById("bookingTime").value;
+  const total = getBookingTotal();
+
+  const result = await window.pywebview.api.create_booking({
+    user_id: currentUser.id,
+    movie_name: bookingMovie.name,
+    cinema: bookingCinema || "CineGO Hà Nội",
+    show_date: showDate,
+    show_time: showTime,
+    seats: selectedSeats,
+    total,
+    method
+  });
+
+  if (!result.ok) {
+    alert(result.message || "Không thể đặt vé");
+    await loadBookedSeats();
+    renderSeats();
+    updateBookingTotal();
+    return;
+  }
+
+  alert(`Thanh toán thành công!\nMã vé: ${result.ticket_code}`);
+
+  selectedSeats = [];
+  await loadBookedSeats();
+  renderSeats();
+  updateBookingTotal();
+}
+
+async function checkPaymentOnce() {
+  const total = getBookingTotal();
+  const paymentCode = getTransferNote();
+
+  const waitingText = document.getElementById("paymentWaitingText");
+  if (waitingText) {
+    waitingText.textContent = `Đang kiểm tra giao dịch ${paymentCode}...`;
+  }
+
+  const result = await window.pywebview.api.check_bank_payment(paymentCode, total);
+
+  if (!result.ok) {
+    if (waitingText) {
+      waitingText.textContent = result.message || "Đang chờ SePay xác nhận giao dịch...";
+    }
+    return false;
+  }
+
+  stopPaymentPolling();
+  await completeBookingAfterPayment("Chuyển khoản ngân hàng");
+  return true;
+}
+
+function startPaymentPolling() {
+  stopPaymentPolling();
+  setBankWaiting(true);
+
+  checkPaymentOnce();
+
+  paymentCheckTimer = setInterval(async () => {
+    try {
+      await checkPaymentOnce();
+    } catch (error) {
+      console.error("Lỗi kiểm tra thanh toán:", error);
+
+      const waitingText = document.getElementById("paymentWaitingText");
+      if (waitingText) {
+        waitingText.textContent = `Lỗi kiểm tra thanh toán: ${error}`;
+      }
+    }
+  }, 2000);
+}
 function getMovieById(id) {
   return movies.find((item) => Number(item.id) === Number(id));
 }
@@ -56,25 +221,41 @@ function movieCard(movie) {
 
       <div class="movie-info">
         <h3 onclick="showDetail(${movie.id})">${movie.name}</h3>
-        <div class="meta">${movie.genre || "Chưa có thể loại"}</div>
-
-        <div class="card-actions">
-          <button class="buy-btn" onclick="startBooking(${movie.id})">Mua vé</button>
-        </div>
       </div>
     </article>
   `;
 }
 
-function renderMovies(data) {
+function renderMovies(data, resetVisible = true) {
   const grid = document.getElementById("movieGrid");
+  currentMovieList = Array.isArray(data) ? data : [];
 
-  if (!data.length) {
+  if (resetVisible) {
+    visibleMovieCount = MOVIES_PER_PAGE;
+  }
+
+  if (!currentMovieList.length) {
     grid.innerHTML = "<p>Không tìm thấy phim phù hợp.</p>";
+    updateLoadMoreButton();
     return;
   }
 
-  grid.innerHTML = data.map(movieCard).join("");
+  const visibleMovies = currentMovieList.slice(0, visibleMovieCount);
+  grid.innerHTML = visibleMovies.map(movieCard).join("");
+
+  updateLoadMoreButton();
+}
+
+function updateLoadMoreButton() {
+  const btn = document.getElementById("loadMoreMoviesBtn");
+  if (!btn) return;
+
+  btn.classList.toggle("hidden", currentMovieList.length <= visibleMovieCount);
+}
+
+function showMoreMovies() {
+  visibleMovieCount += MOVIES_PER_PAGE;
+  renderMovies(currentMovieList, false);
 }
 
 function fillQuickBooking(data) {
@@ -205,26 +386,42 @@ async function loadBookedSeats() {
   }
 
   bookedSeats = await window.pywebview.api.get_booked_seats(
-    bookingMovie.name,
-    showDate,
-    showTime
+  bookingMovie.name,
+  showDate,
+  showTime,
+  bookingCinema || "CineGO Hà Nội"
   );
 }
 
-async function startBooking(id) {
+async function startBooking(id, preset = {}) {
    if (!requireLogin()) return;
 
   const movie = getMovieById(id);
   if (!movie) return;
 
   bookingMovie = movie;
-  selectedSeats = [];
+selectedSeats = [];
 
+const cashPayment = document.querySelector('input[name="paymentMethod"][value="cash"]');
+if (cashPayment) {
+  cashPayment.checked = true;
+}
+  bookingCinema =
+  preset.cinema ||
+  document.getElementById("quickCinema")?.value ||
+  "CineGO Hà Nội";
   document.getElementById("bookingTitle").textContent = `Đặt vé - ${movie.name}`;
   document.getElementById("bookingSub").textContent =
-    `${movie.genre || "Phim"} • ${movie.duration || 0} phút • ${formatMoney(movie.price)}`;
+  `${bookingCinema} • ${movie.genre || "Phim"} • ${movie.duration || 0} phút • ${formatMoney(movie.price)}`;
 
   fillBookingSelects(movie);
+  if (preset.showDate) {
+  document.getElementById("bookingDate").value = preset.showDate;
+}
+
+if (preset.showTime) {
+  document.getElementById("bookingTime").value = preset.showTime;
+}
   await loadBookedSeats();
   renderSeats();
   updateBookingTotal();
@@ -304,8 +501,9 @@ function toggleSeat(seatCode, button) {
 }
 
 function updateBookingTotal() {
-  const total = selectedSeats.length * Number(bookingMovie?.price || 0);
+  const total = getBookingTotal();
   document.getElementById("bookingTotal").textContent = formatMoney(total);
+  updatePaymentBox();
 }
 
 function scrollToMovies() {
@@ -323,6 +521,7 @@ function bindChange(id, handler) {
 }
 
 function bindEvents() {
+  bindClick("loadMoreMoviesBtn", showMoreMovies);
   bindClick("searchBtn", doSearch);
   bindClick("resetBtn", resetSearch);
   bindClick("moviesBtn", scrollToMovies);
@@ -334,10 +533,12 @@ function bindEvents() {
   bindClick("clearContentFormBtn", clearContentForm);
   bindClick("movieAdminBtn", openMovieAdmin);
   bindClick("newMovieBtn", clearMovieForm);
-    bindClick("reviewTabBtn", () => setCinemaCornerTab("article_review"));
-  bindClick("blogTabBtn", () => setCinemaCornerTab("article_blog"));
   bindClick("clearMovieFormBtn", clearMovieForm);
-     bindClick("heroNextBtn", () => {
+
+  bindClick("reviewTabBtn", () => setCinemaCornerTab("article_review"));
+  bindClick("blogTabBtn", () => setCinemaCornerTab("article_blog"));
+
+  bindClick("heroNextBtn", () => {
     nextHeroSlide();
     restartHeroTimer();
   });
@@ -346,11 +547,17 @@ function bindEvents() {
     prevHeroSlide();
     restartHeroTimer();
   });
+
+  document.querySelectorAll('input[name="paymentMethod"]').forEach((input) => {
+    input.addEventListener("change", updatePaymentBox);
+  });
+
   const movieForm = document.getElementById("movieForm");
   if (movieForm) {
     movieForm.addEventListener("submit", saveMovie);
   }
-     const movieIsHot = document.getElementById("movieIsHot");
+
+  const movieIsHot = document.getElementById("movieIsHot");
   if (movieIsHot) {
     movieIsHot.addEventListener("change", () => {
       document.getElementById("movieBannerField").classList.toggle(
@@ -359,6 +566,7 @@ function bindEvents() {
       );
     });
   }
+
   document.querySelectorAll(".content-tab").forEach((tab) => {
     tab.addEventListener("click", () => setContentCategory(tab.dataset.category));
   });
@@ -391,21 +599,40 @@ function bindEvents() {
 
   bindClick("quickBuyBtn", () => {
     const movieId = document.getElementById("quickMovie").value;
+    const cinema = document.getElementById("quickCinema").value;
+    const showDate = document.getElementById("quickDate").value;
+    const showTime = document.getElementById("quickTime").value;
 
     if (!movieId) {
       alert("Vui lòng chọn phim trước.");
       return;
     }
 
-    startBooking(movieId);
+    if (!cinema) {
+      alert("Vui lòng chọn rạp.");
+      return;
+    }
+
+    if (!showDate) {
+      alert("Vui lòng chọn ngày chiếu.");
+      return;
+    }
+
+    if (!showTime) {
+      alert("Vui lòng chọn suất chiếu.");
+      return;
+    }
+
+    startBooking(movieId, {
+      cinema,
+      showDate,
+      showTime
+    });
   });
 
-   bindClick("offersBtn", () => openContentView("offer"));
-
-
+  bindClick("offersBtn", () => openContentView("offer"));
   bindClick("cinemaBtn", () => openContentView("cinema"));
   bindClick("specialBtn", () => openContentView("special"));
-
 
   bindChange("bookingDate", async () => {
     selectedSeats = [];
@@ -422,43 +649,23 @@ function bindEvents() {
   });
 
   bindClick("continuePaymentBtn", async () => {
-    if (!bookingMovie) return;
+  if (!bookingMovie) return;
 
-    if (!selectedSeats.length) {
-      alert("Vui lòng chọn ghế trước khi thanh toán.");
-      return;
-    }
+  if (!selectedSeats.length) {
+    alert("Vui lòng chọn ghế trước khi thanh toán.");
+    return;
+  }
 
-    const showDate = document.getElementById("bookingDate").value;
-    const showTime = document.getElementById("bookingTime").value;
-    const total = selectedSeats.length * Number(bookingMovie.price || 0);
+  const paymentMethod = getSelectedPaymentMethod();
+  const method = paymentMethodLabel(paymentMethod);
 
-    const result = await window.pywebview.api.create_booking({
-      user_id: currentUser.id,
+  if (paymentMethod === "bank") {
+    startPaymentPolling();
+    return;
+  }
 
-      movie_name: bookingMovie.name,
-      show_date: showDate,
-      show_time: showTime,
-      seats: selectedSeats,
-      total,
-      method: "Thanh toán demo"
-    });
-
-    if (!result.ok) {
-      alert(result.message || "Không thể đặt vé");
-      await loadBookedSeats();
-      renderSeats();
-      updateBookingTotal();
-      return;
-    }
-
-    alert(`Đặt vé thành công!\nMã vé: ${result.ticket_code}`);
-
-    selectedSeats = [];
-    await loadBookedSeats();
-    renderSeats();
-    updateBookingTotal();
-  });
+  await completeBookingAfterPayment(method);
+});
 }
 
 async function initApp() {
@@ -476,13 +683,12 @@ async function initApp() {
   bindEvents();
   await loadMovies();
   renderHero();
-restartHeroTimer();
+  restartHeroTimer();
   await renderHomePromos();
   await renderCinemaCorner();
-
 }
-
 window.addEventListener("pywebviewready", initApp);
+loadCinemaCorner("article_review");
 document.addEventListener("DOMContentLoaded", initApp);
 setTimeout(initApp, 1000);
 async function openTickets() {
@@ -507,6 +713,7 @@ async function openTickets() {
         <div>
           <span class="ticket-code">${ticket.ticket_code}</span>
           <h3>${ticket.movie_name}</h3>
+          <p>Rạp: <strong>${ticket.cinema || "Chưa chọn rạp"}</strong></p>
           <p>Ngày chiếu: <strong>${ticket.show_date}</strong></p>
           <p>Suất chiếu: <strong>${ticket.show_time || "Chưa có"}</strong></p>
           <p>Ghế: <strong>${ticket.seats}</strong></p>
@@ -632,13 +839,103 @@ async function submitAuth() {
   alert("Đăng ký thành công. Hãy đăng nhập.");
   setAuthMode("login");
 }
+// ------------------------------------------------------------------ //
+//  Góc điện ảnh — load từ database thay vì hardcode
+// ------------------------------------------------------------------ //
 
-function logout() {
-  currentUser = null;
-  localStorage.removeItem("cinego_user");
-  updateAccountUI();
+let currentArticleCategory = "article_review";
+
+async function loadCinemaCorner(category) {
+    currentArticleCategory = category;
+
+    const featured = document.getElementById("featuredArticle");
+    const featuredImg = document.getElementById("featuredArticleImg");
+    const featuredTitle = document.getElementById("featuredArticleTitle");
+    const featuredDesc = document.getElementById("featuredArticleDesc");
+    const articleList = document.getElementById("articleList");
+
+    if (!featured || !articleList) return;
+
+    // Hiện trạng thái loading
+    featuredTitle.textContent = "Đang tải...";
+    articleList.innerHTML = "";
+
+    try {
+        const items = await window.pywebview.api.get_content_items(category);
+
+        if (!items || items.length === 0) {
+            featuredTitle.textContent = "Chưa có bài viết nào.";
+            featuredImg.style.backgroundImage = "";
+            featuredDesc.textContent = "";
+            return;
+        }
+
+        // Bài đầu tiên làm featured
+        const first = items[0];
+        featuredTitle.textContent = first.title || "";
+        featuredDesc.textContent = first.subtitle || first.description || "";
+        if (first.image) {
+            featuredImg.style.backgroundImage = `url('${first.image}')`;
+            featuredImg.style.backgroundSize = "cover";
+            featuredImg.style.backgroundPosition = "center";
+        } else {
+            featuredImg.style.backgroundImage = "";
+        }
+
+        // Các bài còn lại hiện trong danh sách
+        articleList.innerHTML = "";
+        items.slice(1).forEach((item, index) => {
+            const article = document.createElement("article");
+
+            const thumb = document.createElement("div");
+            thumb.className = `thumb thumb-${index + 1}`;
+            if (item.image) {
+                thumb.style.backgroundImage = `url('${item.image}')`;
+                thumb.style.backgroundSize = "cover";
+                thumb.style.backgroundPosition = "center";
+            }
+
+            const info = document.createElement("div");
+
+            const title = document.createElement("h3");
+            title.textContent = item.title || "";
+
+            const desc = document.createElement("span");
+            desc.textContent = item.subtitle || item.description || "";
+
+            info.appendChild(title);
+            info.appendChild(desc);
+            article.appendChild(thumb);
+            article.appendChild(info);
+            articleList.appendChild(article);
+        });
+
+    } catch (err) {
+        featuredTitle.textContent = "Không thể tải bài viết.";
+        console.error("loadCinemaCorner error:", err);
+    }
 }
 
+// Gắn sự kiện cho 2 tab Bình luận / Blog
+bindClick("reviewTabBtn", () => {
+    document.getElementById("reviewTabBtn").classList.add("active");
+    document.getElementById("blogTabBtn").classList.remove("active");
+    loadCinemaCorner("article_review");
+});
+
+bindClick("blogTabBtn", () => {
+    document.getElementById("blogTabBtn").classList.add("active");
+    document.getElementById("reviewTabBtn").classList.remove("active");
+    loadCinemaCorner("article_blog");
+});
+function logout() {
+    currentUser = null;
+    localStorage.removeItem("cinego_user");
+    // Thêm 2 dòng này để xóa form đăng nhập
+    document.getElementById("authUsername").value = "";
+    document.getElementById("authPassword").value = "";
+    updateAccountUI();
+}
 function requireLogin() {
   if (currentUser) return true;
 
@@ -657,8 +954,6 @@ function categoryName(category) {
     article_blog: "Blog điện ảnh"
   };
 
-  return names[category] || "Nội dung";
-}
   return names[category] || "Nội dung";
 }
 
@@ -1204,4 +1499,41 @@ function setCinemaCornerTab(category) {
   document.getElementById("blogTabBtn").classList.toggle("active", category === "article_blog");
 
   renderCinemaCorner(category);
+}
+function openFooterPage(type) {
+  const pages = {
+    about: {
+      title: "Về chúng tôi",
+      body: "CineGo là ứng dụng đặt vé xem phim desktop, hỗ trợ xem phim đang chiếu, chọn suất chiếu, chọn ghế, thanh toán demo và quản lý vé đã mua."
+    },
+    terms: {
+      title: "Thoả thuận sử dụng",
+      body: "Người dùng cần cung cấp thông tin chính xác khi đăng ký, đặt vé và thanh toán. Dữ liệu trong đồ án được sử dụng cho mục đích mô phỏng hệ thống đặt vé xem phim."
+    },
+    privacy: {
+      title: "Chính sách bảo mật",
+      body: "CineGo lưu thông tin tài khoản, vé đã mua và lịch sử thanh toán trong cơ sở dữ liệu SQLite cục bộ. Mật khẩu và dữ liệu người dùng chỉ phục vụ cho đồ án demo."
+    },
+    feedback: {
+      title: "Góp ý",
+      body: "Người dùng có thể gửi góp ý về giao diện, chức năng đặt vé, thanh toán và trải nghiệm sử dụng để hệ thống được hoàn thiện hơn."
+    },
+    faq: {
+      title: "FAQ",
+      body: "Câu hỏi thường gặp:\n\n1. Có cần đăng nhập để đặt vé không?\nCó, người dùng cần đăng nhập trước khi đặt vé.\n\n2. Vé đã mua xem ở đâu?\nVào mục Vé của tôi.\n\n3. Thanh toán có phải thật không?\nHiện tại là thanh toán demo phục vụ đồ án."
+    }
+  };
+
+  const page = pages[type];
+  if (!page) return;
+
+  document.getElementById("contentViewTitle").textContent = page.title;
+  document.getElementById("contentViewSub").textContent = "Thông tin hệ thống CineGo";
+  document.getElementById("contentViewList").innerHTML = `
+    <article class="footer-page-content">
+      <p>${page.body}</p>
+    </article>
+  `;
+
+  document.getElementById("contentViewModal").classList.remove("hidden");
 }

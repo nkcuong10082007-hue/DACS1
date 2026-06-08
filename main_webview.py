@@ -2,68 +2,57 @@ import os
 import base64
 import mimetypes
 import webview
+import subprocess
+import json
+import urllib.error
+import urllib.parse
+import urllib.request
+import threading
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
+# --- Thay toàn bộ import từ database.db bằng các class model mới ---
+from model.movie import Movie
+from model.user import User
+from model.booking import Booking
 from database.db import (
     create_tables,
-    get_movies,
-    search_movies,
-    get_booked_seats,
-    add_booking,
-    add_payment,
-    get_payments,
-    add_user,
-    check_login,
     get_content_items,
     add_content_item,
     update_content_item,
     delete_content_item,
-    add_movie,
-    update_movie,
-    delete_movie,
-
 )
+# Lưu ý: get_content_items, add/update/delete_content_item vẫn giữ
+# từ db.py vì chưa tạo ContentItem class — sẽ làm sau nếu cần.
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 WEB_DIR = os.path.join(BASE_DIR, "web")
+WEBHOOK_HOST = "127.0.0.1"
+WEBHOOK_PORT = 5005
+FILE_SERVER_PORT = 8765
+SEPAY_WEBHOOK_TOKEN = ""
+SEPAY_API_TOKEN = "W18VEOAEVESQKH8QVXGLSQQNH5KWHS9CDTBUZAGCZWPJ7K93IRRLXM7MAUYNEZMA"
+SEPAY_API_URL = "https://userapi.sepay.vn/v2/transactions"
+received_bank_transactions = []
 
 
-def image_to_data_url(path):
+def image_to_url(path):
     if not path:
         return ""
-
     if not os.path.isabs(path):
         path = os.path.join(BASE_DIR, path)
-
     if not os.path.exists(path):
         return ""
+    rel_path = os.path.relpath(path, BASE_DIR).replace("\\", "/")
+    # Thêm mtime (thời gian sửa đổi file) vào URL
+    # Khi file thay đổi → mtime thay đổi → URL thay đổi → browser fetch lại
+    mtime = int(os.path.getmtime(path))
+    return f"http://127.0.0.1:{FILE_SERVER_PORT}/{rel_path}?v={mtime}"
 
-    mime, _ = mimetypes.guess_type(path)
-    mime = mime or "image/jpeg"
-
-    with open(path, "rb") as file:
-        encoded = base64.b64encode(file.read()).decode("utf-8")
-
-    return f"data:{mime};base64,{encoded}"
-
-
-def movie_to_dict(movie):
-    return {
-        "id": movie[0],
-        "name": movie[1],
-        "genre": movie[2],
-        "duration": movie[3],
-        "director": movie[4],
-        "actors": movie[5],
-        "description": movie[6],
-        "image": image_to_data_url(movie[7]),
-        "image_path": movie[7],
-        "show_dates": movie[8],
-        "show_times": movie[9] if len(movie) > 9 else "",
-        "price": movie[10] if len(movie) > 10 and movie[10] else 90000,
-        "movie_status": movie[11] if len(movie) > 11 and movie[11] else "now_showing",
-        "is_hot": movie[12] if len(movie) > 12 else 0,
-        "banner_image": image_to_data_url(movie[13]) if len(movie) > 13 else "",
-        "banner_image_path": movie[13] if len(movie) > 13 else "",
-    }
+def movie_to_dict(movie: Movie):
+    d = movie.to_dict()
+    d["image"] = image_to_url(movie.image)
+    d["banner_image"] = image_to_url(movie.banner_image)
+    return d
 
 
 def content_to_dict(item):
@@ -73,21 +62,98 @@ def content_to_dict(item):
         "title": item[2],
         "subtitle": item[3],
         "description": item[4],
-        "image": image_to_data_url(item[5]),
+        "image": image_to_url(item[5]),
         "image_path": item[5],
         "status": item[6],
         "created_at": item[7],
     }
 
 
+class SePayWebhookHandler(BaseHTTPRequestHandler):
+    def do_POST(self):
+        if self.path != "/sepay-webhook":
+            self.send_response(404)
+            self.end_headers()
+            return
+
+        if SEPAY_WEBHOOK_TOKEN:
+            auth_header = self.headers.get("Authorization", "")
+            if auth_header != SEPAY_WEBHOOK_TOKEN and auth_header != f"Bearer {SEPAY_WEBHOOK_TOKEN}":
+                self.send_response(401)
+                self.end_headers()
+                return
+
+        length = int(self.headers.get("Content-Length", 0))
+
+        try:
+            raw_body = self.rfile.read(length).decode("utf-8")
+            data = json.loads(raw_body or "{}")
+        except Exception:
+            self.send_response(400)
+            self.end_headers()
+            return
+
+        transfer_type = str(data.get("transferType") or "").lower()
+        amount = int(float(data.get("transferAmount") or 0))
+        content = str(data.get("content") or "").upper()
+        reference_code = str(data.get("referenceCode") or data.get("id") or "")
+
+        if transfer_type == "in" and amount > 0:
+            received_bank_transactions.append({
+                "reference_code": reference_code,
+                "amount": amount,
+                "content": content,
+                "raw": data,
+                "used": False
+            })
+
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json")
+        self.end_headers()
+        self.wfile.write(b'{"success": true}')
+
+    def log_message(self, format, *args):
+        return
+
+
+def start_sepay_webhook_server():
+    server = ThreadingHTTPServer((WEBHOOK_HOST, WEBHOOK_PORT), SePayWebhookHandler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    print(f"SePay webhook server running at http://{WEBHOOK_HOST}:{WEBHOOK_PORT}/sepay-webhook")
+
+def start_file_server():
+    """
+    HTTP server nhỏ serve file tĩnh từ BASE_DIR.
+    Dùng SimpleHTTPRequestHandler có sẵn trong Python,
+    không cần cài thêm thư viện gì.
+    """
+    import http.server
+
+    class Handler(http.server.SimpleHTTPRequestHandler):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, directory=BASE_DIR, **kwargs)
+
+        def log_message(self, format, *args):
+            return  # tắt log để console không bị spam
+
+    server = ThreadingHTTPServer(("127.0.0.1", FILE_SERVER_PORT), Handler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    print(f"File server running at http://127.0.0.1:{FILE_SERVER_PORT}")
 class Api:
+    # ------------------------------------------------------------------ #
+    #  Phim — dùng Movie class thay vì hàm cũ
+    # ------------------------------------------------------------------ #
+
     def get_movies(self):
-        data = [movie_to_dict(movie) for movie in get_movies()]
+        # Trước: [movie_to_dict(m) for m in get_movies()]
+        # Sau:   Movie.get_all() trả về list Movie object
+        return [movie_to_dict(m) for m in Movie.get_all()]
 
-        return data
-
-    def get_content_items(self, category=None):
-        return [content_to_dict(item) for item in get_content_items(category)]
+    def search_movies(self, keyword):
+        # Trước: [movie_to_dict(m) for m in search_movies(keyword)]
+        return [movie_to_dict(m) for m in Movie.search(keyword)]
 
     def add_movie(self, data):
         name = (data.get("name") or "").strip()
@@ -102,43 +168,26 @@ class Api:
         price = data.get("price")
 
         if not name or not genre or not duration or not show_dates or not show_times or not price:
-            return {
-                "ok": False,
-                "message": "Vui lòng nhập đầy đủ tên phim, thể loại, thời lượng, ngày chiếu, suất chiếu và giá vé"
-            }
+            return {"ok": False, "message": "Vui lòng nhập đầy đủ tên phim, thể loại, thời lượng, ngày chiếu, suất chiếu và giá vé"}
 
         try:
             duration = int(duration)
             price = int(price)
-
             if duration <= 0 or price <= 0:
                 raise ValueError
         except ValueError:
-            return {
-                "ok": False,
-                "message": "Thời lượng và giá vé phải là số nguyên dương"
-            }
+            return {"ok": False, "message": "Thời lượng và giá vé phải là số nguyên dương"}
 
-        add_movie(
-            name,
-            genre,
-            duration,
-            director,
-            actors,
-            description,
-            image_path,
-            show_dates,
-            show_times,
-            price,
+        # Trước: add_movie(name, genre, ...)
+        # Sau:   Movie.create(name, genre, ...)
+        Movie.create(
+            name, genre, duration, director, actors, description,
+            image_path, show_dates, show_times, price,
             data.get("movie_status") or "now_showing",
             1 if data.get("is_hot") else 0,
             data.get("banner_image_path") or ""
         )
-
-        return {
-            "ok": True,
-            "message": "Đã thêm phim"
-        }
+        return {"ok": True, "message": "Đã thêm phim"}
 
     def update_movie(self, data):
         movie_id = data.get("id")
@@ -154,150 +203,60 @@ class Api:
         price = data.get("price")
 
         if not movie_id:
-            return {
-                "ok": False,
-                "message": "Thiếu ID phim"
-            }
+            return {"ok": False, "message": "Thiếu ID phim"}
 
         if not name or not genre or not duration or not show_dates or not show_times or not price:
-            return {
-                "ok": False,
-                "message": "Vui lòng nhập đầy đủ tên phim, thể loại, thời lượng, ngày chiếu, suất chiếu và giá vé"
-            }
+            return {"ok": False, "message": "Vui lòng nhập đầy đủ tên phim, thể loại, thời lượng, ngày chiếu, suất chiếu và giá vé"}
 
         try:
             duration = int(duration)
             price = int(price)
-
             if duration <= 0 or price <= 0:
                 raise ValueError
         except ValueError:
-            return {
-                "ok": False,
-                "message": "Thời lượng và giá vé phải là số nguyên dương"
-            }
+            return {"ok": False, "message": "Thời lượng và giá vé phải là số nguyên dương"}
 
-        update_movie(
-            movie_id,
-            name,
-            genre,
-            duration,
-            director,
-            actors,
-            description,
-            image_path,
-            show_dates,
-            show_times,
-            price,
+        # Trước: update_movie(movie_id, name, genre, ...)
+        # Sau:   Movie.update(movie_id, name, genre, ...)
+        Movie.update(
+            movie_id, name, genre, duration, director, actors, description,
+            image_path, show_dates, show_times, price,
             data.get("movie_status") or "now_showing",
             1 if data.get("is_hot") else 0,
             data.get("banner_image_path") or ""
         )
-
-        return {
-            "ok": True,
-            "message": "Đã cập nhật phim"
-        }
+        return {"ok": True, "message": "Đã cập nhật phim"}
 
     def delete_movie(self, movie_id):
-        delete_movie(movie_id)
+        # Trước: delete_movie(movie_id)
+        # Sau:   Movie.delete(movie_id)
+        Movie.delete(movie_id)
+        return {"ok": True, "message": "Đã xóa phim"}
 
-        return {
-            "ok": True,
-            "message": "Đã xóa phim"
-        }
-
-    def add_content_item(self, data):
-        title = (data.get("title") or "").strip()
-        category = (data.get("category") or "").strip()
-
-        if not title or not category:
-            return {
-                "ok": False,
-                "message": "Vui lòng nhập tiêu đề và loại nội dung"
-            }
-
-        add_content_item(
-            category,
-            title,
-            data.get("subtitle") or "",
-            data.get("description") or "",
-            data.get("image_path") or "",
-            data.get("status") or "active"
-        )
-
-        return {
-            "ok": True,
-            "message": "Đã thêm nội dung"
-        }
-
-    def update_content_item(self, data):
-        item_id = data.get("id")
-        title = (data.get("title") or "").strip()
-        category = (data.get("category") or "").strip()
-
-        if not item_id:
-            return {
-                "ok": False,
-                "message": "Thiếu ID nội dung"
-            }
-
-        if not title or not category:
-            return {
-                "ok": False,
-                "message": "Vui lòng nhập tiêu đề và loại nội dung"
-            }
-
-        update_content_item(
-            item_id,
-            category,
-            title,
-            data.get("subtitle") or "",
-            data.get("description") or "",
-            data.get("image_path") or "",
-            data.get("status") or "active"
-        )
-
-        return {
-            "ok": True,
-            "message": "Đã cập nhật nội dung"
-        }
-
-    def delete_content_item(self, item_id):
-        delete_content_item(item_id)
-
-        return {
-            "ok": True,
-            "message": "Đã xóa nội dung"
-        }
-
-    def search_movies(self, keyword):
-        return [movie_to_dict(movie) for movie in search_movies(keyword)]
+    # ------------------------------------------------------------------ #
+    #  Tài khoản — dùng User class thay vì hàm cũ
+    # ------------------------------------------------------------------ #
 
     def login(self, username, password):
         username = (username or "").strip()
         password = (password or "").strip()
 
         if not username or not password:
-            return {
-                "ok": False,
-                "message": "Vui lòng nhập tài khoản và mật khẩu"
-            }
+            return {"ok": False, "message": "Vui lòng nhập tài khoản và mật khẩu"}
 
-        user = check_login(username, password)
+        # Trước: user = check_login(username, password) → so sánh SHA256 trong SQL
+        # Sau:   User.authenticate() lấy user về rồi verify bcrypt
+        user = User.authenticate(username, password)
 
         if not user:
-            return {
-                "ok": False,
-                "message": "Sai tài khoản hoặc mật khẩu"
-            }
+            return {"ok": False, "message": "Sai tài khoản hoặc mật khẩu"}
 
         return {
             "ok": True,
             "user": {
-                "id": user[0],
-                "username": user[1],
-                "role": user[3] if len(user) > 3 else "user"
+                "id": user.id,
+                "username": user.username,
+                "role": user.role
             }
         }
 
@@ -308,114 +267,190 @@ class Api:
         phone = (data.get("phone") or "").strip()
 
         if not username or not password:
-            return {
-                "ok": False,
-                "message": "Vui lòng nhập tài khoản và mật khẩu"
-            }
+            return {"ok": False, "message": "Vui lòng nhập tài khoản và mật khẩu"}
 
         if len(password) < 6:
-            return {
-                "ok": False,
-                "message": "Mật khẩu tối thiểu 6 ký tự"
-            }
+            return {"ok": False, "message": "Mật khẩu tối thiểu 6 ký tự"}
 
         if email and phone:
-            return {
-                "ok": False,
-                "message": "Chỉ nhập email hoặc số điện thoại"
-            }
+            return {"ok": False, "message": "Chỉ nhập email hoặc số điện thoại"}
 
         if not email and not phone:
-            return {
-                "ok": False,
-                "message": "Vui lòng nhập email hoặc số điện thoại"
-            }
+            return {"ok": False, "message": "Vui lòng nhập email hoặc số điện thoại"}
 
-        if add_user(username, password, email or None, phone or None):
-            return {
-                "ok": True,
-                "message": "Đăng ký thành công"
-            }
+        # Trước: add_user(username, password, email, phone)
+        # Sau:   User.create(username, password, email, phone)
+        if User.create(username, password, email or None, phone or None):
+            return {"ok": True, "message": "Đăng ký thành công"}
 
-        return {
-            "ok": False,
-            "message": "Tên tài khoản đã tồn tại"
-        }
+        return {"ok": False, "message": "Tên tài khoản đã tồn tại"}
 
-    def get_booked_seats(self, movie_name, show_date, show_time):
-        return get_booked_seats(movie_name, show_date, show_time)
+    # ------------------------------------------------------------------ #
+    #  Đặt vé — dùng Booking class thay vì hàm cũ
+    # ------------------------------------------------------------------ #
+
+    def get_booked_seats(self, movie_name, show_date, show_time, cinema=None):
+        # Trước: get_booked_seats(movie_name, show_date, show_time, cinema)
+        return Booking.get_booked_seats(movie_name, show_date, show_time, cinema)
 
     def get_my_tickets(self, user_id=1):
-        tickets = []
-
-        for pay in get_payments(user_id):
-            tickets.append({
-                "id": pay[0],
-                "user_id": pay[1],
-                "movie_name": pay[2],
-                "show_date": pay[3],
-                "seats": pay[4],
-                "total": pay[5],
-                "method": pay[6],
-                "created_at": pay[7] if len(pay) > 7 else "",
-                "show_time": pay[8] if len(pay) > 8 else "",
-                "ticket_code": pay[9] if len(pay) > 9 else f"TICKET-{pay[0]}",
-                "status": pay[10] if len(pay) > 10 else "Đã thanh toán",
-            })
-
-        return tickets
+        # Trước: get_payments(user_id) trả về tuple → phải truy cập pay[0], pay[1]...
+        # Sau:   Booking.get_tickets_by_user() trả về list dict sẵn
+        return Booking.get_tickets_by_user(user_id)
 
     def create_booking(self, data):
         user_id = data.get("user_id") or 1
         movie_name = data.get("movie_name")
+        cinema = data.get("cinema") or "CineGO Hà Nội"
         show_date = data.get("show_date")
         show_time = data.get("show_time")
         seats = data.get("seats") or []
         total = data.get("total") or 0
         method = data.get("method") or "Demo"
 
-        if not movie_name or not show_date or not show_time or not seats:
-            return {
-                "ok": False,
-                "message": "Thiếu thông tin đặt vé"
-            }
+        if not movie_name or not cinema or not show_date or not show_time or not seats:
+            return {"ok": False, "message": "Thiếu thông tin đặt vé"}
 
-        booked = get_booked_seats(movie_name, show_date, show_time)
+        # Kiểm tra ghế đã bị đặt chưa
+        booked = Booking.get_booked_seats(movie_name, show_date, show_time, cinema)
         duplicated = [seat for seat in seats if seat in booked]
 
         if duplicated:
-            return {
-                "ok": False,
-                "message": "Ghế đã được đặt: " + ", ".join(duplicated)
-            }
+            return {"ok": False, "message": "Ghế đã được đặt: " + ", ".join(duplicated)}
 
-        ticket_code = add_payment(
-            user_id,
-            movie_name,
-            show_date,
-            show_time,
-            ", ".join(seats),
-            total,
-            method
+        # Trước: add_payment(...) rồi vòng for add_booking(...)
+        # Sau:   Booking.create_payment() và Booking.add_seat()
+        ticket_code = Booking.create_payment(
+            user_id, movie_name, show_date, show_time,
+            ", ".join(seats), total, method, cinema
         )
 
         for seat in seats:
-            add_booking(user_id, movie_name, show_date, show_time, seat)
+            Booking.add_seat(user_id, movie_name, show_date, show_time, seat, cinema)
+
+        return {"ok": True, "ticket_code": ticket_code}
+
+    # ------------------------------------------------------------------ #
+    #  Thanh toán SePay — giữ nguyên, không liên quan OOP
+    # ------------------------------------------------------------------ #
+
+    def check_bank_payment(self, payment_code, total):
+        payment_code = str(payment_code or "").upper().strip()
+        total = int(total or 0)
+        token = str(SEPAY_API_TOKEN or "").strip()
+
+        if token.startswith("Bearer "):
+            token = token.replace("Bearer ", "", 1).strip()
+
+        if not token:
+            return {"ok": False, "message": "Chưa nhập SePay API token"}
+
+        url = "https://userapi.sepay.vn/v2/transactions?per_page=20"
+
+        request = urllib.request.Request(
+            url,
+            headers={
+                "Accept": "application/json",
+                "Authorization": f"Bearer {token}"
+            }
+        )
+
+        try:
+            with urllib.request.urlopen(request, timeout=10) as response:
+                data = json.loads(response.read().decode("utf-8"))
+        except urllib.error.HTTPError:
+            try:
+                output = subprocess.check_output(
+                    ["curl", "-s", "-X", "GET", url,
+                     "-H", f"Authorization: Bearer {token}",
+                     "-H", "Accept: application/json"],
+                    text=True, timeout=10
+                )
+                data = json.loads(output)
+            except Exception as error:
+                return {"ok": False, "message": f"Lỗi gọi SePay bằng curl: {error}"}
+        except Exception as error:
+            return {"ok": False, "message": f"Lỗi gọi SePay API: {error}"}
+
+        transactions = data.get("data", [])
+
+        for transaction in transactions:
+            amount = int(float(transaction.get("amount_in") or 0))
+            content = str(
+                transaction.get("transaction_content") or
+                transaction.get("content") or ""
+            ).upper()
+            account_number = str(transaction.get("account_number") or "").upper()
+
+            same_amount = amount == total
+            same_code = payment_code in content
+            same_account = "96247CINEGO" in account_number or "96247CINEGO" in content
+
+            if same_amount and (same_code or same_account):
+                return {"ok": True, "message": "Đã nhận thanh toán", "transaction": transaction}
 
         return {
-            "ok": True,
-            "ticket_code": ticket_code
+            "ok": False,
+            "message": f"Chưa thấy giao dịch {format(total, ',')}đ với nội dung {payment_code}"
         }
+
+    # ------------------------------------------------------------------ #
+    #  Nội dung (content_items) — giữ nguyên dùng hàm cũ từ db.py
+    # ------------------------------------------------------------------ #
+
+    def get_content_items(self, category=None):
+        return [content_to_dict(item) for item in get_content_items(category)]
+
+    def add_content_item(self, data):
+        title = (data.get("title") or "").strip()
+        category = (data.get("category") or "").strip()
+
+        if not title or not category:
+            return {"ok": False, "message": "Vui lòng nhập tiêu đề và loại nội dung"}
+
+        add_content_item(
+            category, title,
+            data.get("subtitle") or "",
+            data.get("description") or "",
+            data.get("image_path") or "",
+            data.get("status") or "active"
+        )
+        return {"ok": True, "message": "Đã thêm nội dung"}
+
+    def update_content_item(self, data):
+        item_id = data.get("id")
+        title = (data.get("title") or "").strip()
+        category = (data.get("category") or "").strip()
+
+        if not item_id:
+            return {"ok": False, "message": "Thiếu ID nội dung"}
+
+        if not title or not category:
+            return {"ok": False, "message": "Vui lòng nhập tiêu đề và loại nội dung"}
+
+        update_content_item(
+            item_id, category, title,
+            data.get("subtitle") or "",
+            data.get("description") or "",
+            data.get("image_path") or "",
+            data.get("status") or "active"
+        )
+        return {"ok": True, "message": "Đã cập nhật nội dung"}
+
+    def delete_content_item(self, item_id):
+        delete_content_item(item_id)
+        return {"ok": True, "message": "Đã xóa nội dung"}
 
 
 if __name__ == "__main__":
     create_tables()
-
+    start_sepay_webhook_server()
+    start_file_server()
     api = Api()
     index_path = os.path.join(WEB_DIR, "index.html")
 
     webview.create_window(
-        "Movie App",
+        "CineGO",
         index_path,
         js_api=api,
         width=1366,
@@ -423,4 +458,4 @@ if __name__ == "__main__":
         min_size=(1100, 700),
     )
 
-    webview.start(debug=True)
+    webview.start(debug=False)

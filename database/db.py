@@ -100,7 +100,8 @@ def create_tables():
 
     add_column_if_missing(cursor, "movies", "show_times", "TEXT")
     add_column_if_missing(cursor, "movies", "price", "INTEGER DEFAULT 90000")
-
+    add_column_if_missing(cursor, "bookings", "cinema", "TEXT")
+    add_column_if_missing(cursor, "payments", "cinema", "TEXT")
     add_column_if_missing(cursor, "bookings", "show_time", "TEXT")
 
     add_column_if_missing(cursor, "payments", "created_at", "TEXT")
@@ -432,34 +433,40 @@ def search_movies(keyword):
     conn.close()
     return movies
 
-def add_booking(user_id, movie_name, show_date, show_time, seat):
+def add_booking(user_id, movie_name, show_date, show_time, seat, cinema=""):
     conn = connect_db()
     cursor = conn.cursor()
 
     cursor.execute("""
-    INSERT INTO bookings (user_id, movie_name, show_date, show_time, seat)
-    VALUES (?, ?, ?, ?, ?)
-    """, (user_id, movie_name, show_date, show_time, seat))
+    INSERT INTO bookings (user_id, movie_name, show_date, show_time, seat, cinema)
+    VALUES (?, ?, ?, ?, ?, ?)
+    """, (user_id, movie_name, show_date, show_time, seat, cinema))
 
     conn.commit()
     conn.close()
 
 
-def get_booked_seats(movie_name, show_date, show_time):
+def get_booked_seats(movie_name, show_date, show_time, cinema=None):
     conn = connect_db()
     cursor = conn.cursor()
 
-    cursor.execute("""
-    SELECT seat FROM bookings
-    WHERE movie_name = ? AND show_date = ? AND show_time = ?
-    """, (movie_name, show_date, show_time))
+    if cinema:
+        cursor.execute("""
+        SELECT seat FROM bookings
+        WHERE movie_name = ? AND show_date = ? AND show_time = ? AND cinema = ?
+        """, (movie_name, show_date, show_time, cinema))
+    else:
+        cursor.execute("""
+        SELECT seat FROM bookings
+        WHERE movie_name = ? AND show_date = ? AND show_time = ?
+        """, (movie_name, show_date, show_time))
 
     seats = [row[0] for row in cursor.fetchall()]
     conn.close()
     return seats
 
 
-def add_payment(user_id, movie_name, show_date, show_time, seats, total, method):
+def add_payment(user_id, movie_name, show_date, show_time, seats, total, method, cinema=""):
     conn = connect_db()
     cursor = conn.cursor()
 
@@ -467,8 +474,8 @@ def add_payment(user_id, movie_name, show_date, show_time, seats, total, method)
 
     cursor.execute("""
     INSERT INTO payments
-    (user_id, movie_name, show_date, seats, total, method, created_at, show_time, ticket_code, status)
-    VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?, ?, ?)
+    (user_id, movie_name, show_date, seats, total, method, created_at, show_time, ticket_code, status, cinema)
+    VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?, ?, ?, ?)
     """, (
         user_id,
         movie_name,
@@ -478,7 +485,8 @@ def add_payment(user_id, movie_name, show_date, show_time, seats, total, method)
         method,
         show_time,
         ticket_code,
-        "Đã thanh toán"
+        "Đã thanh toán",
+        cinema
     ))
 
     conn.commit()
