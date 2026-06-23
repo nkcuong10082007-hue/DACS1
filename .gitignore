@@ -1,0 +1,5 @@
+config.py
+movie.db
+.venv/
+__pycache__/
+.idea/
