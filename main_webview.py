@@ -21,16 +21,11 @@ from database.db import (
     update_content_item,
     delete_content_item,
 )
-# Lưu ý: get_content_items, add/update/delete_content_item vẫn giữ
-# từ db.py vì chưa tạo ContentItem class — sẽ làm sau nếu cần.
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 WEB_DIR = os.path.join(BASE_DIR, "web")
 WEBHOOK_HOST = "127.0.0.1"
-WEBHOOK_PORT = 5005
-FILE_SERVER_PORT = 8765
-SEPAY_WEBHOOK_TOKEN = ""
-SEPAY_API_TOKEN = "W18VEOAEVESQKH8QVXGLSQQNH5KWHS9CDTBUZAGCZWPJ7K93IRRLXM7MAUYNEZMA"
+from config import SEPAY_API_TOKEN, SEPAY_WEBHOOK_TOKEN, FILE_SERVER_PORT, WEBHOOK_PORT
 SEPAY_API_URL = "https://userapi.sepay.vn/v2/transactions"
 received_bank_transactions = []
 
@@ -43,8 +38,6 @@ def image_to_url(path):
     if not os.path.exists(path):
         return ""
     rel_path = os.path.relpath(path, BASE_DIR).replace("\\", "/")
-    # Thêm mtime (thời gian sửa đổi file) vào URL
-    # Khi file thay đổi → mtime thay đổi → URL thay đổi → browser fetch lại
     mtime = int(os.path.getmtime(path))
     return f"http://127.0.0.1:{FILE_SERVER_PORT}/{rel_path}?v={mtime}"
 
