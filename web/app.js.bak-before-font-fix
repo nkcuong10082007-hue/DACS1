@@ -1,4 +1,4 @@
-﻿let movies = [];
+let movies = [];
 let bookingMovie = null;
 let bookingCinema = "";
 let selectedSeats = [];
@@ -15,7 +15,6 @@ let currentHeroIndex = 0;
 let heroTimer = null;
 let paymentCheckTimer = null;
 let waitingBankPayment = false;
-let currentPaymentCode = "";
 let currentMovieList = [];
 let visibleMovieCount = 10;
 const MOVIES_PER_PAGE = 10;
@@ -27,7 +26,7 @@ const BANK_CONFIG = {
   template: "compact2"
 };
 function formatMoney(value) {
-  return Number(value || 0).toLocaleString("vi-VN") + " VNĐ";
+  return Number(value || 0).toLocaleString("vi-VN") + " VNÄ";
 }
 function getBookingTotal() {
     return Math.round(selectedSeats.length * Number(bookingMovie?.price || 0));
@@ -38,25 +37,13 @@ function getSelectedPaymentMethod() {
 }
 
 function paymentMethodLabel(method) {
-  return method === "bank" ? "Chuyển khoản ngân hàng" : "Tiền mặt";
-}
-
-function resetTransferNote() {
-  currentPaymentCode = "";
+  return method === "bank" ? "Chuyá»ƒn khoáº£n ngÃ¢n hÃ ng" : "Tiá»n máº·t";
 }
 
 function getTransferNote() {
-  if (!currentPaymentCode) {
-    const movieId = bookingMovie?.id || "PHIM";
-    const seatsText = selectedSeats.length ? selectedSeats.join("") : "GHE";
-    const uniquePart = Date.now().toString(36).slice(-6).toUpperCase();
-
-    currentPaymentCode = `CINEGO${movieId}${seatsText}${uniquePart}`
-      .replace(/[^A-Z0-9]/gi, "")
-      .toUpperCase();
-  }
-
-  return currentPaymentCode;
+  const movieId = bookingMovie?.id || "PHIM";
+  const seatsText = selectedSeats.length ? selectedSeats.join("-") : "GHE";
+  return `CINEGO${movieId}${seatsText}`.replace(/[^A-Z0-9]/gi, "").toUpperCase();
 }
 
 function createBankQrUrl(amount) {
@@ -85,7 +72,7 @@ function updatePaymentBox() {
 
   transferAmount.textContent = formatMoney(total);
   transferAccount.textContent = `${BANK_CONFIG.bankName} - ${BANK_CONFIG.accountNo} - ${BANK_CONFIG.accountName}`;
-  transferNote.textContent = `Nội dung chuyển khoản: ${note}`;
+  transferNote.textContent = `Ná»™i dung chuyá»ƒn khoáº£n: ${note}`;
 
   if (method === "bank" && total > 0) {
     qrImage.src = createBankQrUrl(total);
@@ -101,13 +88,13 @@ function setBankWaiting(isWaiting) {
 
   if (btn) {
     btn.disabled = isWaiting;
-    btn.textContent = isWaiting ? "Đang chờ chuyển khoản..." : "Tiếp tục thanh toán";
+    btn.textContent = isWaiting ? "Äang chá» chuyá»ƒn khoáº£n..." : "Tiáº¿p tá»¥c thanh toÃ¡n";
   }
 
   if (waitingText) {
     waitingText.textContent = isWaiting
-      ? "Đang chờ SePay xác nhận giao dịch. Vui lòng không tắt cửa sổ này."
-      : "Quét QR bằng app ngân hàng để chuyển khoản.";
+      ? "Äang chá» SePay xÃ¡c nháº­n giao dá»‹ch. Vui lÃ²ng khÃ´ng táº¯t cá»­a sá»• nÃ y."
+      : "QuÃ©t QR báº±ng app ngÃ¢n hÃ ng Ä‘á»ƒ chuyá»ƒn khoáº£n.";
   }
 }
 
@@ -128,7 +115,7 @@ async function completeBookingAfterPayment(method) {
   const result = await window.pywebview.api.create_booking({
     user_id: currentUser.id,
     movie_name: bookingMovie.name,
-    cinema: bookingCinema || "CineGO Hà Nội",
+    cinema: bookingCinema || "CineGO HÃ  Ná»™i",
     show_date: showDate,
     show_time: showTime,
     seats: selectedSeats,
@@ -137,17 +124,16 @@ async function completeBookingAfterPayment(method) {
   });
 
   if (!result.ok) {
-    alert(result.message || "Không thể đặt vé");
+    alert(result.message || "KhÃ´ng thá»ƒ Ä‘áº·t vÃ©");
     await loadBookedSeats();
     renderSeats();
     updateBookingTotal();
     return;
   }
 
-  alert(`Thanh toán thành công!\nMã vé: ${result.ticket_code}`);
+  alert(`Thanh toÃ¡n thÃ nh cÃ´ng!\nMÃ£ vÃ©: ${result.ticket_code}`);
 
   selectedSeats = [];
-  resetTransferNote();
   await loadBookedSeats();
   renderSeats();
   updateBookingTotal();
@@ -159,20 +145,20 @@ async function checkPaymentOnce() {
 
   const waitingText = document.getElementById("paymentWaitingText");
   if (waitingText) {
-    waitingText.textContent = `Đang kiểm tra giao dịch ${paymentCode}...`;
+    waitingText.textContent = `Äang kiá»ƒm tra giao dá»‹ch ${paymentCode}...`;
   }
 
   const result = await window.pywebview.api.check_bank_payment(paymentCode, total);
 
   if (!result.ok) {
     if (waitingText) {
-      waitingText.textContent = result.message || "Đang chờ SePay xác nhận giao dịch...";
+      waitingText.textContent = result.message || "Äang chá» SePay xÃ¡c nháº­n giao dá»‹ch...";
     }
     return false;
   }
 
   stopPaymentPolling();
-  await completeBookingAfterPayment("Chuyển khoản ngân hàng");
+  await completeBookingAfterPayment("Chuyá»ƒn khoáº£n ngÃ¢n hÃ ng");
   return true;
 }
 
@@ -186,11 +172,11 @@ function startPaymentPolling() {
     try {
       await checkPaymentOnce();
     } catch (error) {
-      console.error("Lỗi kiểm tra thanh toán:", error);
+      console.error("Lá»—i kiá»ƒm tra thanh toÃ¡n:", error);
 
       const waitingText = document.getElementById("paymentWaitingText");
       if (waitingText) {
-        waitingText.textContent = `Lỗi kiểm tra thanh toán: ${error}`;
+        waitingText.textContent = `Lá»—i kiá»ƒm tra thanh toÃ¡n: ${error}`;
       }
     }
   }, 2000);
@@ -208,11 +194,11 @@ function fakeRating(movie) {
 function fakeAgeLabel(movie) {
   const genre = (movie.genre || "").toLowerCase();
 
-  if (genre.includes("kinh") || genre.includes("ma") || genre.includes("hành")) {
+  if (genre.includes("kinh") || genre.includes("ma") || genre.includes("hÃ nh")) {
     return "T18";
   }
 
-  if (genre.includes("tình") || genre.includes("tâm")) {
+  if (genre.includes("tÃ¬nh") || genre.includes("tÃ¢m")) {
     return "T16";
   }
 
@@ -229,7 +215,7 @@ function movieCard(movie) {
             : `<div></div>`
         }
 
-        <div class="rating-badge">★ ${fakeRating(movie)}</div>
+        <div class="rating-badge">â˜… ${fakeRating(movie)}</div>
         <div class="age-badge">${fakeAgeLabel(movie)}</div>
       </div>
 
@@ -249,7 +235,7 @@ function renderMovies(data, resetVisible = true) {
   }
 
   if (!currentMovieList.length) {
-    grid.innerHTML = "<p>Không tìm thấy phim phù hợp.</p>";
+    grid.innerHTML = "<p>KhÃ´ng tÃ¬m tháº¥y phim phÃ¹ há»£p.</p>";
     updateLoadMoreButton();
     return;
   }
@@ -274,7 +260,7 @@ function showMoreMovies() {
 
 function fillQuickBooking(data) {
   const quickMovie = document.getElementById("quickMovie");
-  quickMovie.innerHTML = `<option value="">1 Chọn phim</option>`;
+  quickMovie.innerHTML = `<option value="">1 Chá»n phim</option>`;
 
   data.forEach((movie) => {
     const option = document.createElement("option");
@@ -291,7 +277,7 @@ function fillQuickDates(movie) {
     .map((item) => item.trim())
     .filter(Boolean);
 
-  quickDate.innerHTML = `<option value="">3 Chọn ngày</option>`;
+  quickDate.innerHTML = `<option value="">3 Chá»n ngÃ y</option>`;
 
   dates.forEach((date) => {
     const option = document.createElement("option");
@@ -308,7 +294,7 @@ function fillQuickTimes(movie) {
     .map((item) => item.trim())
     .filter(Boolean);
 
-  quickTime.innerHTML = `<option value="">4 Chọn suất</option>`;
+  quickTime.innerHTML = `<option value="">4 Chá»n suáº¥t</option>`;
 
   times.forEach((time) => {
     const option = document.createElement("option");
@@ -324,10 +310,10 @@ async function loadMovies() {
     renderMovies(movies);
     fillQuickBooking(movies);
   } catch (error) {
-    console.error("Lỗi loadMovies:", error);
+    console.error("Lá»—i loadMovies:", error);
 
     document.getElementById("movieGrid").innerHTML =
-      `<p style="color:red">Không tải được danh sách phim: ${error}</p>`;
+      `<p style="color:red">KhÃ´ng táº£i Ä‘Æ°á»£c danh sÃ¡ch phim: ${error}</p>`;
   }
 }
 
@@ -354,13 +340,13 @@ function showDetail(id) {
 
   document.getElementById("detailImage").src = movie.image || "";
   document.getElementById("detailTitle").textContent = movie.name;
-  document.getElementById("detailGenre").textContent = movie.genre || "Chưa cập nhật";
-  document.getElementById("detailDuration").textContent = `${movie.duration || 0} phút`;
-  document.getElementById("detailDirector").textContent = movie.director || "Chưa cập nhật";
-  document.getElementById("detailActors").textContent = movie.actors || "Chưa cập nhật";
-  document.getElementById("detailTimes").textContent = movie.show_times || "Chưa có";
+  document.getElementById("detailGenre").textContent = movie.genre || "ChÆ°a cáº­p nháº­t";
+  document.getElementById("detailDuration").textContent = `${movie.duration || 0} phÃºt`;
+  document.getElementById("detailDirector").textContent = movie.director || "ChÆ°a cáº­p nháº­t";
+  document.getElementById("detailActors").textContent = movie.actors || "ChÆ°a cáº­p nháº­t";
+  document.getElementById("detailTimes").textContent = movie.show_times || "ChÆ°a cÃ³";
   document.getElementById("detailPrice").textContent = formatMoney(movie.price);
-  document.getElementById("detailDescription").textContent = movie.description || "Chưa có mô tả.";
+  document.getElementById("detailDescription").textContent = movie.description || "ChÆ°a cÃ³ mÃ´ táº£.";
 
   const dates = (movie.show_dates || "")
     .split(",")
@@ -370,7 +356,7 @@ function showDetail(id) {
   const dateBox = document.getElementById("detailDates");
 
   if (!dates.length) {
-    dateBox.innerHTML = `<span class="date-pill">Chưa có lịch chiếu</span>`;
+    dateBox.innerHTML = `<span class="date-pill">ChÆ°a cÃ³ lá»‹ch chiáº¿u</span>`;
   } else {
     dateBox.innerHTML = dates
       .map((date) => `<span class="date-pill">${date}</span>`)
@@ -403,7 +389,7 @@ async function loadBookedSeats() {
   bookingMovie.name,
   showDate,
   showTime,
-  bookingCinema || "CineGO Hà Nội"
+  bookingCinema || "CineGO HÃ  Ná»™i"
   );
 }
 
@@ -415,7 +401,6 @@ async function startBooking(id, preset = {}) {
 
   bookingMovie = movie;
 selectedSeats = [];
-resetTransferNote();
 
 const cashPayment = document.querySelector('input[name="paymentMethod"][value="cash"]');
 if (cashPayment) {
@@ -424,10 +409,10 @@ if (cashPayment) {
   bookingCinema =
   preset.cinema ||
   document.getElementById("quickCinema")?.value ||
-  "CineGO Hà Nội";
-  document.getElementById("bookingTitle").textContent = `Đặt vé - ${movie.name}`;
+  "CineGO HÃ  Ná»™i";
+  document.getElementById("bookingTitle").textContent = `Äáº·t vÃ© - ${movie.name}`;
   document.getElementById("bookingSub").textContent =
-  `${bookingCinema} • ${movie.genre || "Phim"} • ${movie.duration || 0} phút • ${formatMoney(movie.price)}`;
+  `${bookingCinema} â€¢ ${movie.genre || "Phim"} â€¢ ${movie.duration || 0} phÃºt â€¢ ${formatMoney(movie.price)}`;
 
   fillBookingSelects(movie);
   if (preset.showDate) {
@@ -446,8 +431,6 @@ if (preset.showTime) {
 }
 
 function closeBooking() {
-  stopPaymentPolling();
-  resetTransferNote();
   document.getElementById("bookingModal").classList.add("hidden");
 }
 
@@ -467,11 +450,11 @@ function fillBookingSelects(movie) {
 
   dateSelect.innerHTML = dates.length
     ? dates.map((date) => `<option value="${date}">${date}</option>`).join("")
-    : `<option value="">Chưa có ngày chiếu</option>`;
+    : `<option value="">ChÆ°a cÃ³ ngÃ y chiáº¿u</option>`;
 
   timeSelect.innerHTML = times.length
     ? times.map((time) => `<option value="${time}">${time}</option>`).join("")
-    : `<option value="">Chưa có suất chiếu</option>`;
+    : `<option value="">ChÆ°a cÃ³ suáº¥t chiáº¿u</option>`;
 }
 
 function renderSeats() {
@@ -506,8 +489,6 @@ function renderSeats() {
 }
 
 function toggleSeat(seatCode, button) {
-  resetTransferNote();
-
   if (selectedSeats.includes(seatCode)) {
     selectedSeats = selectedSeats.filter((seat) => seat !== seatCode);
     button.classList.remove("is-selected");
@@ -623,22 +604,22 @@ function bindEvents() {
     const showTime = document.getElementById("quickTime").value;
 
     if (!movieId) {
-      alert("Vui lòng chọn phim trước.");
+      alert("Vui lÃ²ng chá»n phim trÆ°á»›c.");
       return;
     }
 
     if (!cinema) {
-      alert("Vui lòng chọn rạp.");
+      alert("Vui lÃ²ng chá»n ráº¡p.");
       return;
     }
 
     if (!showDate) {
-      alert("Vui lòng chọn ngày chiếu.");
+      alert("Vui lÃ²ng chá»n ngÃ y chiáº¿u.");
       return;
     }
 
     if (!showTime) {
-      alert("Vui lòng chọn suất chiếu.");
+      alert("Vui lÃ²ng chá»n suáº¥t chiáº¿u.");
       return;
     }
 
@@ -655,7 +636,6 @@ function bindEvents() {
 
   bindChange("bookingDate", async () => {
     selectedSeats = [];
-    resetTransferNote();
     await loadBookedSeats();
     renderSeats();
     updateBookingTotal();
@@ -663,7 +643,6 @@ function bindEvents() {
 
   bindChange("bookingTime", async () => {
     selectedSeats = [];
-    resetTransferNote();
     await loadBookedSeats();
     renderSeats();
     updateBookingTotal();
@@ -673,7 +652,7 @@ function bindEvents() {
   if (!bookingMovie) return;
 
   if (!selectedSeats.length) {
-    alert("Vui lòng chọn ghế trước khi thanh toán.");
+    alert("Vui lÃ²ng chá»n gháº¿ trÆ°á»›c khi thanh toÃ¡n.");
     return;
   }
 
@@ -713,7 +692,7 @@ document.addEventListener("DOMContentLoaded", initApp);
 setTimeout(initApp, 1000);
 async function openTickets() {
   const list = document.getElementById("ticketsList");
-  list.innerHTML = `<p>Đang tải vé...</p>`;
+  list.innerHTML = `<p>Äang táº£i vÃ©...</p>`;
 
   document.getElementById("ticketsModal").classList.remove("hidden");
 
@@ -724,7 +703,7 @@ async function openTickets() {
 
 
     if (!tickets.length) {
-      list.innerHTML = `<p>Bạn chưa có vé nào.</p>`;
+      list.innerHTML = `<p>Báº¡n chÆ°a cÃ³ vÃ© nÃ o.</p>`;
       return;
     }
 
@@ -733,23 +712,23 @@ async function openTickets() {
         <div>
           <span class="ticket-code">${ticket.ticket_code}</span>
           <h3>${ticket.movie_name}</h3>
-          <p>Rạp: <strong>${ticket.cinema || "Chưa chọn rạp"}</strong></p>
-          <p>Ngày chiếu: <strong>${ticket.show_date}</strong></p>
-          <p>Suất chiếu: <strong>${ticket.show_time || "Chưa có"}</strong></p>
-          <p>Ghế: <strong>${ticket.seats}</strong></p>
-          <p>Thanh toán: <strong>${ticket.method}</strong></p>
-          <p>Trạng thái: <strong>${ticket.status}</strong></p>
+          <p>Ráº¡p: <strong>${ticket.cinema || "ChÆ°a chá»n ráº¡p"}</strong></p>
+          <p>NgÃ y chiáº¿u: <strong>${ticket.show_date}</strong></p>
+          <p>Suáº¥t chiáº¿u: <strong>${ticket.show_time || "ChÆ°a cÃ³"}</strong></p>
+          <p>Gháº¿: <strong>${ticket.seats}</strong></p>
+          <p>Thanh toÃ¡n: <strong>${ticket.method}</strong></p>
+          <p>Tráº¡ng thÃ¡i: <strong>${ticket.status}</strong></p>
         </div>
 
         <div class="ticket-price">
-          <span>Tổng tiền</span>
+          <span>Tá»•ng tiá»n</span>
           <strong>${formatMoney(ticket.total)}</strong>
           <small>${ticket.created_at || ""}</small>
         </div>
       </article>
     `).join("");
   } catch (error) {
-    list.innerHTML = `<p style="color:red">Không tải được vé: ${error}</p>`;
+    list.innerHTML = `<p style="color:red">KhÃ´ng táº£i Ä‘Æ°á»£c vÃ©: ${error}</p>`;
   }
 }
 
@@ -770,7 +749,7 @@ function updateAccountUI() {
     loginBtn.classList.add("hidden");
     logoutBtn.classList.remove("hidden");
   } else {
-    name.textContent = "Khách";
+    name.textContent = "KhÃ¡ch";
     sub.textContent = "0 Stars";
     loginBtn.classList.remove("hidden");
     logoutBtn.classList.add("hidden");
@@ -807,16 +786,16 @@ function setAuthMode(mode) {
 
   const isRegister = authMode === "register";
 
-  document.getElementById("authTitle").textContent = isRegister ? "Đăng ký" : "Đăng nhập";
+  document.getElementById("authTitle").textContent = isRegister ? "ÄÄƒng kÃ½" : "ÄÄƒng nháº­p";
   document.getElementById("authSubtitle").textContent = isRegister
-    ? "Tạo tài khoản để đặt vé."
-    : "Đăng nhập để đặt vé và xem vé đã mua.";
+    ? "Táº¡o tÃ i khoáº£n Ä‘á»ƒ Ä‘áº·t vÃ©."
+    : "ÄÄƒng nháº­p Ä‘á»ƒ Ä‘áº·t vÃ© vÃ  xem vÃ© Ä‘Ã£ mua.";
 
   document.getElementById("registerExtra").classList.toggle("hidden", !isRegister);
-  document.getElementById("submitAuthBtn").textContent = isRegister ? "Đăng ký" : "Đăng nhập";
+  document.getElementById("submitAuthBtn").textContent = isRegister ? "ÄÄƒng kÃ½" : "ÄÄƒng nháº­p";
   document.getElementById("switchAuthBtn").textContent = isRegister
-    ? "Đã có tài khoản? Đăng nhập"
-    : "Chưa có tài khoản? Đăng ký";
+    ? "ÄÃ£ cÃ³ tÃ i khoáº£n? ÄÄƒng nháº­p"
+    : "ChÆ°a cÃ³ tÃ i khoáº£n? ÄÄƒng kÃ½";
 
   document.getElementById("authMessage").textContent = "";
 }
@@ -856,11 +835,11 @@ async function submitAuth() {
     return;
   }
 
-  alert("Đăng ký thành công. Hãy đăng nhập.");
+  alert("ÄÄƒng kÃ½ thÃ nh cÃ´ng. HÃ£y Ä‘Äƒng nháº­p.");
   setAuthMode("login");
 }
 // ------------------------------------------------------------------ //
-//  Góc điện ảnh — load từ database thay vì hardcode
+//  GÃ³c Ä‘iá»‡n áº£nh â€” load tá»« database thay vÃ¬ hardcode
 // ------------------------------------------------------------------ //
 
 let currentArticleCategory = "article_review";
@@ -876,21 +855,21 @@ async function loadCinemaCorner(category) {
 
     if (!featured || !articleList) return;
 
-    // Hiện trạng thái loading
-    featuredTitle.textContent = "Đang tải...";
+    // Hiá»‡n tráº¡ng thÃ¡i loading
+    featuredTitle.textContent = "Äang táº£i...";
     articleList.innerHTML = "";
 
     try {
         const items = await window.pywebview.api.get_content_items(category);
 
         if (!items || items.length === 0) {
-            featuredTitle.textContent = "Chưa có bài viết nào.";
+            featuredTitle.textContent = "ChÆ°a cÃ³ bÃ i viáº¿t nÃ o.";
             featuredImg.style.backgroundImage = "";
             featuredDesc.textContent = "";
             return;
         }
 
-        // Bài đầu tiên làm featured
+        // BÃ i Ä‘áº§u tiÃªn lÃ m featured
         const first = items[0];
         featuredTitle.textContent = first.title || "";
         featuredDesc.textContent = first.subtitle || first.description || "";
@@ -902,7 +881,7 @@ async function loadCinemaCorner(category) {
             featuredImg.style.backgroundImage = "";
         }
 
-        // Các bài còn lại hiện trong danh sách
+        // CÃ¡c bÃ i cÃ²n láº¡i hiá»‡n trong danh sÃ¡ch
         articleList.innerHTML = "";
         items.slice(1).forEach((item, index) => {
             const article = document.createElement("article");
@@ -931,12 +910,12 @@ async function loadCinemaCorner(category) {
         });
 
     } catch (err) {
-        featuredTitle.textContent = "Không thể tải bài viết.";
+        featuredTitle.textContent = "KhÃ´ng thá»ƒ táº£i bÃ i viáº¿t.";
         console.error("loadCinemaCorner error:", err);
     }
 }
 
-// Gắn sự kiện cho 2 tab Bình luận / Blog
+// Gáº¯n sá»± kiá»‡n cho 2 tab BÃ¬nh luáº­n / Blog
 bindClick("reviewTabBtn", () => {
     document.getElementById("reviewTabBtn").classList.add("active");
     document.getElementById("blogTabBtn").classList.remove("active");
@@ -951,7 +930,7 @@ bindClick("blogTabBtn", () => {
 function logout() {
     currentUser = null;
     localStorage.removeItem("cinego_user");
-    // Thêm 2 dòng này để xóa form đăng nhập
+    // ThÃªm 2 dÃ²ng nÃ y Ä‘á»ƒ xÃ³a form Ä‘Äƒng nháº­p
     document.getElementById("authUsername").value = "";
     document.getElementById("authPassword").value = "";
     updateAccountUI();
@@ -966,15 +945,15 @@ function requireLogin() {
 bindClick("myTicketsBtn", openTickets);
 function categoryName(category) {
   const names = {
-    offer: "Ưu đãi",
-    event: "Sự kiện",
-    cinema: "Rạp phim",
-    special: "Rạp đặc biệt",
-    article_review: "Bình luận phim",
-    article_blog: "Blog điện ảnh"
+    offer: "Æ¯u Ä‘Ã£i",
+    event: "Sá»± kiá»‡n",
+    cinema: "Ráº¡p phim",
+    special: "Ráº¡p Ä‘áº·c biá»‡t",
+    article_review: "BÃ¬nh luáº­n phim",
+    article_blog: "Blog Ä‘iá»‡n áº£nh"
   };
 
-  return names[category] || "Nội dung";
+  return names[category] || "Ná»™i dung";
 }
 
 async function loadContentItems(category = null) {
@@ -992,23 +971,23 @@ async function renderHomePromos() {
   if (!activeOffers.length) {
     grid.innerHTML = `
       <article class="promo-card blue">
-        <h3>Thứ Ba vui vẻ</h3>
-        <p>Vé chỉ từ 45K cho thành viên.</p>
+        <h3>Thá»© Ba vui váº»</h3>
+        <p>VÃ© chá»‰ tá»« 45K cho thÃ nh viÃªn.</p>
       </article>
 
       <article class="promo-card navy">
-        <h3>Quyền lợi thành viên</h3>
-        <p>Tích điểm đổi quà, nhận ưu đãi riêng.</p>
+        <h3>Quyá»n lá»£i thÃ nh viÃªn</h3>
+        <p>TÃ­ch Ä‘iá»ƒm Ä‘á»•i quÃ , nháº­n Æ°u Ä‘Ã£i riÃªng.</p>
       </article>
 
       <article class="promo-card lime">
-        <h3>Combo bắp nước</h3>
-        <p>Ưu đãi combo khi đặt vé online.</p>
+        <h3>Combo báº¯p nÆ°á»›c</h3>
+        <p>Æ¯u Ä‘Ã£i combo khi Ä‘áº·t vÃ© online.</p>
       </article>
 
       <article class="promo-card mint">
-        <h3>Thanh toán online</h3>
-        <p>Đặt vé nhanh, không cần xếp hàng.</p>
+        <h3>Thanh toÃ¡n online</h3>
+        <p>Äáº·t vÃ© nhanh, khÃ´ng cáº§n xáº¿p hÃ ng.</p>
       </article>
     `;
     return;
@@ -1024,14 +1003,14 @@ async function renderHomePromos() {
 
       <div class="promo-card-body">
         <h3>${item.title}</h3>
-        <p>${item.subtitle || "Xem chi tiết ưu đãi"}</p>
+        <p>${item.subtitle || "Xem chi tiáº¿t Æ°u Ä‘Ã£i"}</p>
       </div>
     </article>
   `).join("");
 }
 function openContentAdmin() {
   if (!currentUser || currentUser.role !== "admin") {
-    alert("Chỉ admin mới được dùng chức năng này.");
+    alert("Chá»‰ admin má»›i Ä‘Æ°á»£c dÃ¹ng chá»©c nÄƒng nÃ y.");
     return;
   }
 
@@ -1057,12 +1036,12 @@ async function setContentCategory(category) {
 
 async function renderAdminContentList() {
   const list = document.getElementById("adminContentList");
-  list.innerHTML = `<p>Đang tải...</p>`;
+  list.innerHTML = `<p>Äang táº£i...</p>`;
 
   const items = await window.pywebview.api.get_content_items(currentContentCategory);
 
   if (!items.length) {
-    list.innerHTML = `<p>Chưa có ${categoryName(currentContentCategory).toLowerCase()} nào.</p>`;
+    list.innerHTML = `<p>ChÆ°a cÃ³ ${categoryName(currentContentCategory).toLowerCase()} nÃ o.</p>`;
     return;
   }
 
@@ -1076,13 +1055,13 @@ async function renderAdminContentList() {
 
       <div>
         <h4>${item.title}</h4>
-        <p>${item.subtitle || "Không có dòng phụ"}</p>
-        <p>Trạng thái: ${item.status === "hidden" ? "Ẩn" : "Hiển thị"}</p>
+        <p>${item.subtitle || "KhÃ´ng cÃ³ dÃ²ng phá»¥"}</p>
+        <p>Tráº¡ng thÃ¡i: ${item.status === "hidden" ? "áº¨n" : "Hiá»ƒn thá»‹"}</p>
       </div>
 
       <div class="admin-content-actions">
-        <button class="edit-content-btn" onclick="editContentItem(${item.id})">Sửa</button>
-        <button class="delete-content-btn" onclick="removeContentItem(${item.id})">Xóa</button>
+        <button class="edit-content-btn" onclick="editContentItem(${item.id})">Sá»­a</button>
+        <button class="delete-content-btn" onclick="removeContentItem(${item.id})">XÃ³a</button>
       </div>
     </article>
   `).join("");
@@ -1096,7 +1075,7 @@ async function editContentItem(id) {
 
   editingContentId = item.id;
 
-  document.getElementById("contentFormTitle").textContent = "Sửa nội dung";
+  document.getElementById("contentFormTitle").textContent = "Sá»­a ná»™i dung";
   document.getElementById("contentCategory").value = item.category;
   document.getElementById("contentTitle").value = item.title || "";
   document.getElementById("contentSubtitle").value = item.subtitle || "";
@@ -1109,7 +1088,7 @@ async function editContentItem(id) {
 function clearContentForm() {
   editingContentId = null;
 
-  document.getElementById("contentFormTitle").textContent = "Thêm nội dung";
+  document.getElementById("contentFormTitle").textContent = "ThÃªm ná»™i dung";
   document.getElementById("contentCategory").value = currentContentCategory;
   document.getElementById("contentTitle").value = "";
   document.getElementById("contentSubtitle").value = "";
@@ -1139,7 +1118,7 @@ async function saveContentItem(event) {
     : await window.pywebview.api.add_content_item(data);
 
   if (!result.ok) {
-    msg.textContent = result.message || "Không thể lưu nội dung";
+    msg.textContent = result.message || "KhÃ´ng thá»ƒ lÆ°u ná»™i dung";
     return;
   }
 
@@ -1150,12 +1129,12 @@ async function saveContentItem(event) {
 }
 
 async function removeContentItem(id) {
-  if (!confirm("Bạn chắc chắn muốn xóa nội dung này?")) return;
+  if (!confirm("Báº¡n cháº¯c cháº¯n muá»‘n xÃ³a ná»™i dung nÃ y?")) return;
 
   const result = await window.pywebview.api.delete_content_item(id);
 
   if (!result.ok) {
-    alert(result.message || "Không thể xóa nội dung");
+    alert(result.message || "KhÃ´ng thá»ƒ xÃ³a ná»™i dung");
     return;
   }
 
@@ -1170,8 +1149,8 @@ async function openContentView(category) {
   const sub = document.getElementById("contentViewSub");
 
   title.textContent = categoryName(category);
-  sub.textContent = `Danh sách ${categoryName(category).toLowerCase()} đang hiển thị.`;
-  list.innerHTML = `<p>Đang tải...</p>`;
+  sub.textContent = `Danh sÃ¡ch ${categoryName(category).toLowerCase()} Ä‘ang hiá»ƒn thá»‹.`;
+  list.innerHTML = `<p>Äang táº£i...</p>`;
 
   document.getElementById("contentViewModal").classList.remove("hidden");
 
@@ -1179,7 +1158,7 @@ async function openContentView(category) {
   const activeItems = items.filter((item) => item.status !== "hidden");
 
   if (!activeItems.length) {
-    list.innerHTML = `<p>Chưa có nội dung nào.</p>`;
+    list.innerHTML = `<p>ChÆ°a cÃ³ ná»™i dung nÃ o.</p>`;
     return;
   }
 
@@ -1223,10 +1202,10 @@ async function openContentDetail(id, category) {
             ? `<p class="content-detail-subtitle">${item.subtitle}</p>`
             : ""
         }
-        <p class="content-detail-description">${item.description || "Chưa có mô tả chi tiết."}</p>
+        <p class="content-detail-description">${item.description || "ChÆ°a cÃ³ mÃ´ táº£ chi tiáº¿t."}</p>
 
 
-        <button class="outline-btn" onclick="openContentView('${category}')">← Quay lại</button>
+        <button class="outline-btn" onclick="openContentView('${category}')">â† Quay láº¡i</button>
       </div>
     </article>
   `;
@@ -1237,7 +1216,7 @@ function closeContentView() {
 }
 function openMovieAdmin() {
   if (!currentUser || currentUser.role !== "admin") {
-    alert("Chỉ admin mới được dùng chức năng này.");
+    alert("Chá»‰ admin má»›i Ä‘Æ°á»£c dÃ¹ng chá»©c nÄƒng nÃ y.");
     return;
   }
 
@@ -1253,7 +1232,7 @@ function renderAdminMovieList() {
   const list = document.getElementById("adminMovieList");
 
   if (!movies.length) {
-    list.innerHTML = `<p>Chưa có phim nào.</p>`;
+    list.innerHTML = `<p>ChÆ°a cÃ³ phim nÃ o.</p>`;
     return;
   }
 
@@ -1267,16 +1246,16 @@ function renderAdminMovieList() {
 
       <div>
         <h4>${movie.name}</h4>
-        <p>${movie.genre || "Chưa có thể loại"}</p>
-        <p>${movie.duration || 0} phút • ${formatMoney(movie.price)}</p>
-        <p>Ngày: ${movie.show_dates || "Chưa có"}</p>
-        <p>Suất: ${movie.show_times || "Chưa có"}</p>
-        <p>Loại: ${movieStatusName(movie.movie_status)} ${Number(movie.is_hot || 0) === 1 ? "• Hot banner" : ""}</p>
+        <p>${movie.genre || "ChÆ°a cÃ³ thá»ƒ loáº¡i"}</p>
+        <p>${movie.duration || 0} phÃºt â€¢ ${formatMoney(movie.price)}</p>
+        <p>NgÃ y: ${movie.show_dates || "ChÆ°a cÃ³"}</p>
+        <p>Suáº¥t: ${movie.show_times || "ChÆ°a cÃ³"}</p>
+        <p>Loáº¡i: ${movieStatusName(movie.movie_status)} ${Number(movie.is_hot || 0) === 1 ? "â€¢ Hot banner" : ""}</p>
       </div>
 
       <div class="admin-movie-actions">
-        <button class="edit-movie-btn" onclick="editMovie(${movie.id})">Sửa</button>
-        <button class="delete-movie-btn" onclick="removeMovie(${movie.id})">Xóa</button>
+        <button class="edit-movie-btn" onclick="editMovie(${movie.id})">Sá»­a</button>
+        <button class="delete-movie-btn" onclick="removeMovie(${movie.id})">XÃ³a</button>
       </div>
     </article>
   `).join("");
@@ -1285,7 +1264,7 @@ function renderAdminMovieList() {
 function clearMovieForm() {
   editingMovieId = null;
 
-  document.getElementById("movieFormTitle").textContent = "Thêm phim";
+  document.getElementById("movieFormTitle").textContent = "ThÃªm phim";
   document.getElementById("movieId").value = "";
   document.getElementById("movieName").value = "";
   document.getElementById("movieGenre").value = "";
@@ -1310,7 +1289,7 @@ function editMovie(id) {
 
   editingMovieId = movie.id;
 
-  document.getElementById("movieFormTitle").textContent = "Sửa phim";
+  document.getElementById("movieFormTitle").textContent = "Sá»­a phim";
   document.getElementById("movieId").value = movie.id;
   document.getElementById("movieName").value = movie.name || "";
   document.getElementById("movieGenre").value = movie.genre || "";
@@ -1359,7 +1338,7 @@ is_hot: document.getElementById("movieIsHot").checked
     : await window.pywebview.api.add_movie(data);
 
   if (!result.ok) {
-    msg.textContent = result.message || "Không thể lưu phim";
+    msg.textContent = result.message || "KhÃ´ng thá»ƒ lÆ°u phim";
     return;
   }
 
@@ -1371,12 +1350,12 @@ restartHeroTimer();
 }
 
 async function removeMovie(id) {
-  if (!confirm("Bạn chắc chắn muốn xóa phim này?")) return;
+  if (!confirm("Báº¡n cháº¯c cháº¯n muá»‘n xÃ³a phim nÃ y?")) return;
 
   const result = await window.pywebview.api.delete_movie(id);
 
   if (!result.ok) {
-    alert(result.message || "Không thể xóa phim");
+    alert(result.message || "KhÃ´ng thá»ƒ xÃ³a phim");
     return;
   }
 
@@ -1388,12 +1367,12 @@ restartHeroTimer();
 }
 function movieStatusName(status) {
   const names = {
-    now_showing: "Đang chiếu",
-    coming_soon: "Sắp chiếu",
+    now_showing: "Äang chiáº¿u",
+    coming_soon: "Sáº¯p chiáº¿u",
     imax: "Phim IMAX"
   };
 
-  return names[status] || "Đang chiếu";
+  return names[status] || "Äang chiáº¿u";
 }
 function renderHero() {
   const hero = document.getElementById("heroBanner");
@@ -1467,9 +1446,9 @@ async function renderCinemaCorner(category = "article_review") {
     layout.innerHTML = `
       <article class="featured-article">
         <div class="article-image article-main-img"></div>
-        <h3>Chưa có bài viết nào</h3>
+        <h3>ChÆ°a cÃ³ bÃ i viáº¿t nÃ o</h3>
         <div class="article-stats">
-          <span>Admin có thể thêm bài trong mục Quản lý nội dung.</span>
+          <span>Admin cÃ³ thá»ƒ thÃªm bÃ i trong má»¥c Quáº£n lÃ½ ná»™i dung.</span>
         </div>
       </article>
     `;
@@ -1490,8 +1469,8 @@ async function renderCinemaCorner(category = "article_review") {
       <h3>${first.title}</h3>
 
       <div class="article-stats">
-        <span>👍 Thích</span>
-        <span>👁 ${28 + Number(first.id || 0)}</span>
+        <span>ðŸ‘ ThÃ­ch</span>
+        <span>ðŸ‘ ${28 + Number(first.id || 0)}</span>
       </div>
     </article>
 
@@ -1506,7 +1485,7 @@ async function renderCinemaCorner(category = "article_review") {
 
           <div>
             <h3>${item.title}</h3>
-            <span>👁 ${90 + Number(item.id || 0)}</span>
+            <span>ðŸ‘ ${90 + Number(item.id || 0)}</span>
           </div>
         </article>
       `).join("")}
@@ -1523,24 +1502,24 @@ function setCinemaCornerTab(category) {
 function openFooterPage(type) {
   const pages = {
     about: {
-      title: "Về chúng tôi",
-      body: "CineGo là ứng dụng đặt vé xem phim desktop, hỗ trợ xem phim đang chiếu, chọn suất chiếu, chọn ghế, thanh toán demo và quản lý vé đã mua."
+      title: "Vá» chÃºng tÃ´i",
+      body: "CineGo lÃ  á»©ng dá»¥ng Ä‘áº·t vÃ© xem phim desktop, há»— trá»£ xem phim Ä‘ang chiáº¿u, chá»n suáº¥t chiáº¿u, chá»n gháº¿, thanh toÃ¡n demo vÃ  quáº£n lÃ½ vÃ© Ä‘Ã£ mua."
     },
     terms: {
-      title: "Thoả thuận sử dụng",
-      body: "Người dùng cần cung cấp thông tin chính xác khi đăng ký, đặt vé và thanh toán. Dữ liệu trong đồ án được sử dụng cho mục đích mô phỏng hệ thống đặt vé xem phim."
+      title: "Thoáº£ thuáº­n sá»­ dá»¥ng",
+      body: "NgÆ°á»i dÃ¹ng cáº§n cung cáº¥p thÃ´ng tin chÃ­nh xÃ¡c khi Ä‘Äƒng kÃ½, Ä‘áº·t vÃ© vÃ  thanh toÃ¡n. Dá»¯ liá»‡u trong Ä‘á»“ Ã¡n Ä‘Æ°á»£c sá»­ dá»¥ng cho má»¥c Ä‘Ã­ch mÃ´ phá»ng há»‡ thá»‘ng Ä‘áº·t vÃ© xem phim."
     },
     privacy: {
-      title: "Chính sách bảo mật",
-      body: "CineGo lưu thông tin tài khoản, vé đã mua và lịch sử thanh toán trong cơ sở dữ liệu SQLite cục bộ. Mật khẩu và dữ liệu người dùng chỉ phục vụ cho đồ án demo."
+      title: "ChÃ­nh sÃ¡ch báº£o máº­t",
+      body: "CineGo lÆ°u thÃ´ng tin tÃ i khoáº£n, vÃ© Ä‘Ã£ mua vÃ  lá»‹ch sá»­ thanh toÃ¡n trong cÆ¡ sá»Ÿ dá»¯ liá»‡u SQLite cá»¥c bá»™. Máº­t kháº©u vÃ  dá»¯ liá»‡u ngÆ°á»i dÃ¹ng chá»‰ phá»¥c vá»¥ cho Ä‘á»“ Ã¡n demo."
     },
     feedback: {
-      title: "Góp ý",
-      body: "Người dùng có thể gửi góp ý về giao diện, chức năng đặt vé, thanh toán và trải nghiệm sử dụng để hệ thống được hoàn thiện hơn."
+      title: "GÃ³p Ã½",
+      body: "NgÆ°á»i dÃ¹ng cÃ³ thá»ƒ gá»­i gÃ³p Ã½ vá» giao diá»‡n, chá»©c nÄƒng Ä‘áº·t vÃ©, thanh toÃ¡n vÃ  tráº£i nghiá»‡m sá»­ dá»¥ng Ä‘á»ƒ há»‡ thá»‘ng Ä‘Æ°á»£c hoÃ n thiá»‡n hÆ¡n."
     },
     faq: {
       title: "FAQ",
-      body: "Câu hỏi thường gặp:\n\n1. Có cần đăng nhập để đặt vé không?\nCó, người dùng cần đăng nhập trước khi đặt vé.\n\n2. Vé đã mua xem ở đâu?\nVào mục Vé của tôi.\n\n3. Thanh toán có phải thật không?\nHiện tại là thanh toán demo phục vụ đồ án."
+      body: "CÃ¢u há»i thÆ°á»ng gáº·p:\n\n1. CÃ³ cáº§n Ä‘Äƒng nháº­p Ä‘á»ƒ Ä‘áº·t vÃ© khÃ´ng?\nCÃ³, ngÆ°á»i dÃ¹ng cáº§n Ä‘Äƒng nháº­p trÆ°á»›c khi Ä‘áº·t vÃ©.\n\n2. VÃ© Ä‘Ã£ mua xem á»Ÿ Ä‘Ã¢u?\nVÃ o má»¥c VÃ© cá»§a tÃ´i.\n\n3. Thanh toÃ¡n cÃ³ pháº£i tháº­t khÃ´ng?\nHiá»‡n táº¡i lÃ  thanh toÃ¡n demo phá»¥c vá»¥ Ä‘á»“ Ã¡n."
     }
   };
 
@@ -1548,7 +1527,7 @@ function openFooterPage(type) {
   if (!page) return;
 
   document.getElementById("contentViewTitle").textContent = page.title;
-  document.getElementById("contentViewSub").textContent = "Thông tin hệ thống CineGo";
+  document.getElementById("contentViewSub").textContent = "ThÃ´ng tin há»‡ thá»‘ng CineGo";
   document.getElementById("contentViewList").innerHTML = `
     <article class="footer-page-content">
       <p>${page.body}</p>
@@ -1557,4 +1536,3 @@ function openFooterPage(type) {
 
   document.getElementById("contentViewModal").classList.remove("hidden");
 }
-

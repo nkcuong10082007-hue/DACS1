@@ -374,22 +374,12 @@ class Api:
                 transaction.get("content") or ""
             ).upper()
             account_number = str(transaction.get("account_number") or "").upper()
-            sub_account = str(
-                transaction.get("sub_account") or
-                transaction.get("subAccount") or ""
-            ).upper()
 
             same_amount = amount == total
             same_code = payment_code in content
-            same_account = (
-                "96247CINEGO" in account_number or
-                "96247CINEGO" in sub_account or
-                "96247CINEGO" in content
-            )
+            same_account = "96247CINEGO" in account_number or "96247CINEGO" in content
 
-            # Bắt buộc khớp đúng nội dung chuyển khoản của vé hiện tại.
-            # Không xác nhận chỉ vì giao dịch cũ cùng số tiền vào đúng tài khoản.
-            if same_amount and same_code and same_account:
+            if same_amount and (same_code or same_account):
                 return {"ok": True, "message": "Đã nhận thanh toán", "transaction": transaction}
 
         return {
