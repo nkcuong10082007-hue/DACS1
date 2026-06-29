@@ -2,7 +2,7 @@ import customtkinter as ctk
 from tkinter import messagebox
 from PIL import Image, ImageOps
 
-import session
+from hide import session
 from database.db import get_booked_seats
 from gui.book_ticket import book_ticket_screen
 

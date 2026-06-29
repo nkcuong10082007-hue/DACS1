@@ -2,7 +2,7 @@ import random
 import customtkinter as ctk
 from tkinter import messagebox
 
-import session
+from hide import session
 from database.db import (
     add_user,
     check_login,

@@ -1,7 +1,7 @@
 import customtkinter as ctk
 from tkinter import messagebox
 
-import session
+from hide import session
 from database.db import add_booking, get_booked_seats
 from gui.payment import payment_screen
 

@@ -1,7 +1,7 @@
 import customtkinter as ctk
 from tkinter import messagebox
 
-import session
+from hide import session
 from database.db import get_payments
 
 

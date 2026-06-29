@@ -1,6 +1,4 @@
 import os
-import base64
-import mimetypes
 import webview
 import subprocess
 import json
@@ -8,6 +6,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 import threading
+import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 # --- Thay toàn bộ import từ database.db bằng các class model mới ---
@@ -25,7 +24,7 @@ from database.db import (
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 WEB_DIR = os.path.join(BASE_DIR, "web")
 WEBHOOK_HOST = "127.0.0.1"
-from config import SEPAY_API_TOKEN, SEPAY_WEBHOOK_TOKEN, FILE_SERVER_PORT, WEBHOOK_PORT
+from hide.config import SEPAY_API_TOKEN, SEPAY_WEBHOOK_TOKEN, FILE_SERVER_PORT, WEBHOOK_PORT
 SEPAY_API_URL = "https://userapi.sepay.vn/v2/transactions"
 received_bank_transactions = []
 
@@ -136,12 +135,10 @@ def start_file_server():
     print(f"File server running at http://127.0.0.1:{FILE_SERVER_PORT}")
 class Api:
     # ------------------------------------------------------------------ #
-    #  Phim — dùng Movie class thay vì hàm cũ
+
     # ------------------------------------------------------------------ #
 
     def get_movies(self):
-        # Trước: [movie_to_dict(m) for m in get_movies()]
-        # Sau:   Movie.get_all() trả về list Movie object
         return [movie_to_dict(m) for m in Movie.get_all()]
 
     def search_movies(self, keyword):
@@ -323,6 +320,17 @@ class Api:
 
         return {"ok": True, "ticket_code": ticket_code}
 
+    def get_admin_statistics(self):
+        return Booking.get_statistics()
+
+    def open_email_draft(self, subject, body, to=""):
+        gmail_url = "https://mail.google.com/mail/?view=cm&fs=1"
+        if to:
+            gmail_url += "&to=" + urllib.parse.quote(to)
+        gmail_url += "&su=" + urllib.parse.quote(subject or "")
+        gmail_url += "&body=" + urllib.parse.quote(body or "")
+        webbrowser.open(gmail_url)
+        return {"ok": True, "message": "Đã mở Gmail để gửi vé"}
     # ------------------------------------------------------------------ #
     #  Thanh toán SePay — giữ nguyên, không liên quan OOP
     # ------------------------------------------------------------------ #

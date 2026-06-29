@@ -85,3 +85,93 @@ class Booking(BaseModel):
             })
 
         return tickets
+    @staticmethod
+    def _ticket_count(seats_text):
+        seats = [seat.strip() for seat in str(seats_text or "").split(",") if seat.strip()]
+        return len(seats) if seats else 1
+
+    @classmethod
+    def get_statistics(cls):
+        """Tổng hợp số liệu bán vé cho màn hình admin."""
+        rows = cls.query("""
+            SELECT movie_name, show_date, show_time, seats, total, method, cinema, created_at
+            FROM payments
+            ORDER BY id DESC
+        """)
+
+        movie_stats = {}
+        time_stats = {}
+        date_stats = {}
+        cinema_stats = {}
+        recent_payments = []
+        total_orders = len(rows)
+        total_tickets = 0
+        total_revenue = 0
+
+        def add_group(store, label, tickets, revenue):
+            key = label or "Chưa rõ"
+            item = store.setdefault(key, {
+                "label": key,
+                "orders": 0,
+                "tickets": 0,
+                "revenue": 0
+            })
+            item["orders"] += 1
+            item["tickets"] += tickets
+            item["revenue"] += revenue
+
+        for row in rows:
+            movie_name = row["movie_name"] or "Chưa rõ phim"
+            show_date = row["show_date"] or "Chưa rõ ngày"
+            show_time = row["show_time"] or "Chưa rõ suất"
+            cinema = row["cinema"] or "Chưa rõ rạp"
+            tickets = cls._ticket_count(row["seats"])
+            revenue = int(row["total"] or 0)
+
+            total_tickets += tickets
+            total_revenue += revenue
+
+            add_group(movie_stats, movie_name, tickets, revenue)
+            add_group(time_stats, show_time, tickets, revenue)
+            add_group(date_stats, show_date, tickets, revenue)
+            add_group(cinema_stats, cinema, tickets, revenue)
+
+            if len(recent_payments) < 8:
+                recent_payments.append({
+                    "movie_name": movie_name,
+                    "show_date": show_date,
+                    "show_time": show_time,
+                    "cinema": cinema,
+                    "tickets": tickets,
+                    "total": revenue,
+                    "method": row["method"] or "",
+                    "created_at": row["created_at"] or ""
+                })
+
+        def sort_group(store):
+            return sorted(
+                store.values(),
+                key=lambda item: (item["tickets"], item["orders"], item["revenue"]),
+                reverse=True
+            )
+
+        movies = sort_group(movie_stats)
+        times = sort_group(time_stats)
+        dates = sort_group(date_stats)
+        cinemas = sort_group(cinema_stats)
+
+        return {
+            "summary": {
+                "total_orders": total_orders,
+                "total_tickets": total_tickets,
+                "total_revenue": total_revenue,
+                "top_movie": movies[0] if movies else None,
+                "top_time": times[0] if times else None,
+                "top_cinema": cinemas[0] if cinemas else None
+            },
+            "movies": movies,
+            "times": times,
+            "dates": dates,
+            "cinemas": cinemas,
+            "recent_payments": recent_payments
+        }

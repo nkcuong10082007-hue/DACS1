@@ -1,4 +1,4 @@
-﻿let movies = [];
+let movies = [];
 let bookingMovie = null;
 let bookingCinema = "";
 let selectedSeats = [];
@@ -16,6 +16,7 @@ let heroTimer = null;
 let paymentCheckTimer = null;
 let waitingBankPayment = false;
 let currentPaymentCode = "";
+let lastLoadedTickets = [];
 let currentMovieList = [];
 let visibleMovieCount = 10;
 const MOVIES_PER_PAGE = 10;
@@ -551,6 +552,8 @@ function bindEvents() {
   bindClick("newContentBtn", clearContentForm);
   bindClick("clearContentFormBtn", clearContentForm);
   bindClick("movieAdminBtn", openMovieAdmin);
+  bindClick("statsAdminBtn", openStatsAdmin);
+  bindClick("refreshStatsBtn", loadAdminStatistics);
   bindClick("newMovieBtn", clearMovieForm);
   bindClick("clearMovieFormBtn", clearMovieForm);
 
@@ -711,6 +714,66 @@ async function initApp() {
 window.addEventListener("pywebviewready", initApp);
 document.addEventListener("DOMContentLoaded", initApp);
 setTimeout(initApp, 1000);
+function createTicketQrData(ticket) {
+  return [
+    "CINEGO_TICKET",
+    ticket.ticket_code || "",
+    ticket.movie_name || "",
+    ticket.cinema || "",
+    ticket.show_date || "",
+    ticket.show_time || "",
+    ticket.seats || "",
+    ticket.total || 0,
+    ticket.status || ""
+  ].join("|");
+}
+
+function createTicketQrUrl(ticket) {
+  return `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(createTicketQrData(ticket))}`;
+}
+
+function buildTicketEmail(ticket) {
+  return `Xin chào,
+
+CineGO gửi bạn thông tin vé điện tử:
+
+Mã vé: ${ticket.ticket_code}
+Phim: ${ticket.movie_name}
+Rạp: ${ticket.cinema || "Chưa chọn rạp"}
+Ngày chiếu: ${ticket.show_date}
+Suất chiếu: ${ticket.show_time || "Chưa có"}
+Ghế: ${ticket.seats}
+Tổng tiền: ${formatMoney(ticket.total)}
+Thanh toán: ${ticket.method}
+Trạng thái: ${ticket.status}
+
+Khi đến rạp, khách hàng chỉ cần đưa mã vé hoặc QR vé cho nhân viên kiểm tra.
+
+CineGO cảm ơn quý khách.`;
+}
+
+async function sendTicketEmail(index) {
+  const ticket = lastLoadedTickets[index];
+  if (!ticket) {
+    alert("Không tìm thấy thông tin vé để gửi email.");
+    return;
+  }
+
+  const subject = `Vé điện tử CineGO - ${ticket.ticket_code}`;
+  const body = buildTicketEmail(ticket);
+
+  try {
+    if (window.pywebview && window.pywebview.api && window.pywebview.api.open_email_draft) {
+      const result = await window.pywebview.api.open_email_draft(subject, body, "");
+      if (result && result.ok) return;
+    }
+  } catch (error) {
+    console.error("Không mở được email bằng Python API:", error);
+  }
+
+  window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+}
+
 async function openTickets() {
   const list = document.getElementById("ticketsList");
   list.innerHTML = `<p>Đang tải vé...</p>`;
@@ -721,38 +784,43 @@ async function openTickets() {
     if (!requireLogin()) return;
 
     const tickets = await window.pywebview.api.get_my_tickets(currentUser.id);
+    lastLoadedTickets = Array.isArray(tickets) ? tickets : [];
 
-
-    if (!tickets.length) {
+    if (!lastLoadedTickets.length) {
       list.innerHTML = `<p>Bạn chưa có vé nào.</p>`;
       return;
     }
 
-    list.innerHTML = tickets.map((ticket) => `
-      <article class="ticket-card">
-        <div>
-          <span class="ticket-code">${ticket.ticket_code}</span>
-          <h3>${ticket.movie_name}</h3>
-          <p>Rạp: <strong>${ticket.cinema || "Chưa chọn rạp"}</strong></p>
-          <p>Ngày chiếu: <strong>${ticket.show_date}</strong></p>
-          <p>Suất chiếu: <strong>${ticket.show_time || "Chưa có"}</strong></p>
-          <p>Ghế: <strong>${ticket.seats}</strong></p>
-          <p>Thanh toán: <strong>${ticket.method}</strong></p>
-          <p>Trạng thái: <strong>${ticket.status}</strong></p>
+    list.innerHTML = lastLoadedTickets.map((ticket, index) => `
+      <article class="ticket-card ticket-card-with-qr">
+        <div class="ticket-main-info">
+          <span class="ticket-code">${escapeHtml(ticket.ticket_code)}</span>
+          <h3>${escapeHtml(ticket.movie_name)}</h3>
+          <p>Rạp: <strong>${escapeHtml(ticket.cinema || "Chưa chọn rạp")}</strong></p>
+          <p>Ngày chiếu: <strong>${escapeHtml(ticket.show_date)}</strong></p>
+          <p>Suất chiếu: <strong>${escapeHtml(ticket.show_time || "Chưa có")}</strong></p>
+          <p>Ghế: <strong>${escapeHtml(ticket.seats)}</strong></p>
+          <p>Thanh toán: <strong>${escapeHtml(ticket.method)}</strong></p>
+          <p>Trạng thái: <strong>${escapeHtml(ticket.status)}</strong></p>
+        </div>
+
+        <div class="ticket-qr-block">
+          <img src="${createTicketQrUrl(ticket)}" alt="QR vé ${escapeHtml(ticket.ticket_code)}">
+          <small>QR vé điện tử</small>
+          <button type="button" onclick="sendTicketEmail(${index})">Gửi vé qua email</button>
         </div>
 
         <div class="ticket-price">
           <span>Tổng tiền</span>
           <strong>${formatMoney(ticket.total)}</strong>
-          <small>${ticket.created_at || ""}</small>
+          <small>${escapeHtml(ticket.created_at || "")}</small>
         </div>
       </article>
     `).join("");
   } catch (error) {
-    list.innerHTML = `<p style="color:red">Không tải được vé: ${error}</p>`;
+    list.innerHTML = `<p style="color:red">Không tải được vé: ${escapeHtml(error)}</p>`;
   }
 }
-
 function closeTickets() {
   document.getElementById("ticketsModal").classList.add("hidden");
 }
@@ -792,6 +860,14 @@ function updateAccountUI() {
     );
   }
 
+  const statsAdminBtn = document.getElementById("statsAdminBtn");
+
+  if (statsAdminBtn) {
+    statsAdminBtn.classList.toggle(
+      "hidden",
+      !currentUser || currentUser.role !== "admin"
+    );
+  }
 }
 
 function openLogin() {
@@ -1234,6 +1310,147 @@ async function openContentDetail(id, category) {
 
 function closeContentView() {
   document.getElementById("contentViewModal").classList.add("hidden");
+}
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+function statsNumber(value) {
+  return Number(value || 0).toLocaleString("vi-VN");
+}
+
+function setStatsText(id, value) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = value;
+}
+
+function renderStatsRows(targetId, items, emptyText) {
+  const box = document.getElementById(targetId);
+  if (!box) return;
+
+  const data = Array.isArray(items) ? items : [];
+  if (!data.length) {
+    box.innerHTML = `<p class="stats-empty">${emptyText}</p>`;
+    return;
+  }
+
+  const maxTickets = Math.max(...data.map((item) => Number(item.tickets || 0)), 1);
+
+  box.innerHTML = data.slice(0, 6).map((item, index) => {
+    const tickets = Number(item.tickets || 0);
+    const percent = Math.max(8, Math.round((tickets / maxTickets) * 100));
+
+    return `
+      <article class="stats-row">
+        <div class="stats-row-top">
+          <span class="stats-rank">#${index + 1}</span>
+          <strong>${escapeHtml(item.label || "Không rõ")}</strong>
+          <em>${statsNumber(tickets)} vé</em>
+        </div>
+        <div class="stats-bar"><i style="width: ${percent}%"></i></div>
+        <p>${statsNumber(item.orders)} đơn • ${formatMoney(item.revenue)}</p>
+      </article>
+    `;
+  }).join("");
+}
+
+function renderRecentPayments(payments) {
+  const list = document.getElementById("recentPaymentsList");
+  if (!list) return;
+
+  const data = Array.isArray(payments) ? payments : [];
+  if (!data.length) {
+    list.innerHTML = `<p class="stats-empty">Chưa có giao dịch nào.</p>`;
+    return;
+  }
+
+  list.innerHTML = data.slice(0, 8).map((item) => `
+    <article class="recent-payment-row">
+      <div>
+        <strong>${escapeHtml(item.movie_name || "Không rõ phim")}</strong>
+        <span>${escapeHtml(item.show_date || "Chưa rõ ngày")} • ${escapeHtml(item.show_time || "Chưa rõ suất")} • ${escapeHtml(item.cinema || "Chưa rõ rạp")}</span>
+      </div>
+      <div>
+        <em>${statsNumber(item.tickets)} vé</em>
+        <strong>${formatMoney(item.total)}</strong>
+      </div>
+    </article>
+  `).join("");
+}
+
+async function loadAdminStatistics() {
+  setStatsText("statTotalTickets", "...");
+  setStatsText("statTotalOrders", "...");
+  setStatsText("statTotalRevenue", "...");
+  setStatsText("statTopMovie", "Đang tải...");
+  setStatsText("statTopMovieSub", "Vui lòng chờ");
+
+  ["movieStatsList", "timeStatsList", "dateStatsList", "cinemaStatsList", "recentPaymentsList"].forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = `<p class="stats-empty">Đang tải dữ liệu...</p>`;
+  });
+
+  try {
+    const stats = await window.pywebview.api.get_admin_statistics();
+    if (!stats || stats.ok === false) {
+      throw new Error(stats?.message || "Không tải được thống kê");
+    }
+
+    const summary = stats.summary || {};
+    const topMovie = summary.top_movie || null;
+
+    setStatsText("statTotalTickets", statsNumber(summary.total_tickets));
+    setStatsText("statTotalOrders", statsNumber(summary.total_orders));
+    setStatsText("statTotalRevenue", formatMoney(summary.total_revenue));
+    setStatsText("statTopMovie", topMovie ? topMovie.label : "Chưa có dữ liệu");
+    setStatsText(
+      "statTopMovieSub",
+      topMovie ? `${statsNumber(topMovie.tickets)} vé • ${formatMoney(topMovie.revenue)}` : "0 vé"
+    );
+
+    const topTime = summary.top_time || null;
+    const topCinema = summary.top_cinema || null;
+    if (topMovie && topTime) {
+      setStatsText(
+        "businessAdviceText",
+        `Nên tăng nhân sự bán vé, soát vé và hỗ trợ khách ở khung ${topTime.label}, đặc biệt với phim ${topMovie.label}${topCinema ? ` tại ${topCinema.label}` : ""}. Đây là thời điểm có nhu cầu cao nên cần chuẩn bị quầy, bắp nước và nhân sự trước giờ chiếu.`
+      );
+    } else {
+      setStatsText("businessAdviceText", "Chưa đủ dữ liệu đặt vé để đưa ra gợi ý phân công nhân sự.");
+    }
+    renderStatsRows("movieStatsList", stats.movies, "Chưa có dữ liệu theo phim.");
+    renderStatsRows("timeStatsList", stats.times, "Chưa có dữ liệu theo khung giờ.");
+    renderStatsRows("dateStatsList", stats.dates, "Chưa có dữ liệu theo ngày chiếu.");
+    renderStatsRows("cinemaStatsList", stats.cinemas, "Chưa có dữ liệu theo rạp.");
+    renderRecentPayments(stats.recent_payments);
+  } catch (error) {
+    const message = `Lỗi tải thống kê: ${error}`;
+    setStatsText("statTopMovie", "Có lỗi xảy ra");
+    setStatsText("statTopMovieSub", message);
+    ["movieStatsList", "timeStatsList", "dateStatsList", "cinemaStatsList", "recentPaymentsList"].forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) el.innerHTML = `<p class="stats-empty">${escapeHtml(message)}</p>`;
+    });
+  }
+}
+
+async function openStatsAdmin() {
+  if (!currentUser || currentUser.role !== "admin") {
+    alert("Chỉ admin mới được dùng chức năng này.");
+    return;
+  }
+
+  document.getElementById("statsAdminModal").classList.remove("hidden");
+  await loadAdminStatistics();
+}
+
+function closeStatsAdmin() {
+  document.getElementById("statsAdminModal").classList.add("hidden");
 }
 function openMovieAdmin() {
   if (!currentUser || currentUser.role !== "admin") {

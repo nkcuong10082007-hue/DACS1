@@ -21,6 +21,7 @@
         <button class="nav-btn" id="specialBtn">Rạp Đặc Biệt</button>
         <button class="nav-btn hidden" id="contentAdminBtn">Quản lý nội dung</button>
         <button class="nav-btn hidden" id="movieAdminBtn">Quản lý phim</button>
+        <button class="nav-btn hidden" id="statsAdminBtn">Thống kê</button>
 
     </nav>
 
@@ -591,7 +592,81 @@
     </section>
 </div>
 
-<script src="app.js?v=paymentfix1"></script>
+<div id="statsAdminModal" class="modal hidden">
+    <div class="modal-backdrop" onclick="closeStatsAdmin()"></div>
+
+    <section class="stats-admin-panel">
+        <button class="modal-close" onclick="closeStatsAdmin()">×</button>
+
+        <div class="stats-admin-header">
+            <div>
+                <h2>Thống kê bán vé</h2>
+                <p>Theo dõi phim, suất chiếu, rạp và doanh thu để admin phân công nhân sự hợp lý.</p>
+            </div>
+
+            <button id="refreshStatsBtn" type="button">Làm mới</button>
+        </div>
+
+        <div class="stats-summary-grid">
+            <article class="stats-summary-card">
+                <span>Tổng vé đã bán</span>
+                <strong id="statTotalTickets">0</strong>
+                <small>Dựa trên số ghế trong vé</small>
+            </article>
+
+            <article class="stats-summary-card">
+                <span>Tổng đơn đặt vé</span>
+                <strong id="statTotalOrders">0</strong>
+                <small>Mỗi lần thanh toán là một đơn</small>
+            </article>
+
+            <article class="stats-summary-card">
+                <span>Tổng doanh thu</span>
+                <strong id="statTotalRevenue">0 VNĐ</strong>
+                <small>Tính từ các vé đã thanh toán</small>
+            </article>
+
+            <article class="stats-summary-card highlight">
+                <span>Phim bán chạy nhất</span>
+                <strong id="statTopMovie">Chưa có dữ liệu</strong>
+                <small id="statTopMovieSub">0 vé</small>
+            </article>
+        </div>
+
+
+        <section class="stats-panel stats-advice-panel">
+            <h3>Gợi ý vận hành</h3>
+            <p id="businessAdviceText">Chưa có dữ liệu để đưa ra gợi ý.</p>
+        </section>
+        <div class="stats-dashboard-grid">
+            <section class="stats-panel">
+                <h3>Phim được đặt nhiều nhất</h3>
+                <div id="movieStatsList" class="stats-list"></div>
+            </section>
+
+            <section class="stats-panel">
+                <h3>Khung giờ đông nhất</h3>
+                <div id="timeStatsList" class="stats-list"></div>
+            </section>
+
+            <section class="stats-panel">
+                <h3>Ngày chiếu nổi bật</h3>
+                <div id="dateStatsList" class="stats-list"></div>
+            </section>
+
+            <section class="stats-panel">
+                <h3>Rạp có nhiều vé</h3>
+                <div id="cinemaStatsList" class="stats-list"></div>
+            </section>
+        </div>
+
+        <section class="stats-panel stats-recent-panel">
+            <h3>Giao dịch gần đây</h3>
+            <div id="recentPaymentsList" class="recent-payment-list"></div>
+        </section>
+    </section>
+</div>
+<script src="app.js?v=stats1"></script>
 </body>
 </html>
 

@@ -2,13 +2,10 @@ import customtkinter as ctk
 from tkinter import messagebox
 from PIL import Image, ImageOps
 
-import session
+from hide import session
 from database.db import get_movies, delete_movie, search_movies
 from gui.movie_detail import show_detail
 from gui.my_tickets import my_tickets_screen
-from gui.offers import offers_screen
-from gui.special_cinema import special_cinema_screen
-from gui.content_pages import show_content_list
 from gui.content_pages import show_content_list
 ctk.set_appearance_mode("light")
 ctk.set_default_color_theme("blue")
